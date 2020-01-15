@@ -39,7 +39,7 @@ Windows:
 Linux (beta - only ubuntu tested):
 1. Needs to be compiled first, so you'll need to install these packages:  
 `sudo apt install build-essential ant git libusb-1.0 libfftw3-3 libfftw3-dev openjdk-8-jdk`
-1. `git clone --depth=1 --recurse-submodules https://github.com/pavsa/hackrf-spectrum-analyzer.git`
+1. `git clone --depth=1 --recurse-submodules git@github.com:chris-piekarski/hackrf-spectrum-analyzer.git`
 1. `cd hackrf-spectrum-analyzer/src/hackrf-sweep/`
 1. `make` 
 1. `build/hackrf_sweep_spectrum_analyzer.sh`
