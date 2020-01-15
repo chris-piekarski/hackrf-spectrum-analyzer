@@ -13,10 +13,14 @@ import jspectrumanalyzer.core.HackRFSettings;
 public class FrequencySelectorRangeBinder
 {
 	public FrequencySelectorPanel selFreqStart, selFreqEnd;
-	public FrequencySelectorRangeBinder(FrequencySelectorPanel selFreqStart, FrequencySelectorPanel selFreqEnd)
+	public QuickFrequencySelectorPanel selFreqQuick;
+
+	public FrequencySelectorRangeBinder(FrequencySelectorPanel selFreqStart, FrequencySelectorPanel selFreqEnd,
+			QuickFrequencySelectorPanel selFreqQuick)
 	{
 		this.selFreqEnd	= selFreqEnd;
-		this.selFreqStart	= selFreqStart;
+		this.selFreqStart = selFreqStart;
+		this.selFreqQuick = selFreqQuick;
 		VetoableChangeListener freqStartVetoable = evt -> {
 			Integer newVal = (Integer) evt.getNewValue();
 			if (newVal >= selFreqEnd.getValue())
@@ -34,9 +38,48 @@ public class FrequencySelectorRangeBinder
 					throw new PropertyVetoException(">", evt);
 			}
 		};
+		VetoableChangeListener freqQuickVetoable = evt -> {
+			String newVal = (String) evt.getNewValue();
+			switch(newVal) {
+				case "WiFi 2":
+					selFreqStart.setValue(2401);
+					selFreqEnd.setValue(2495);
+					break;
+				case "WiFi 5":
+					selFreqStart.setValue(5030);
+					selFreqEnd.setValue(5875);
+					break;
+				case "LTE-1":
+					//covers bands B1-4,9-11,21,24,25,65,66,70
+					selFreqStart.setValue(1890);
+					selFreqEnd.setValue(2200);
+					break;
+				case "LTE-2":
+					//covers bands B5,6,8,12,13,14,17,18,19,20
+					//26,27,28,71
+					selFreqStart.setValue(663);
+					selFreqEnd.setValue(915);
+					break;
+				case "FM":
+         				selFreqStart.setValue(88);
+					selFreqEnd.setValue(108);
+					break;
+				//HackRF operating range starts at 1MHz
+				//case "AM":
+				//	selFreqStart.setValue(0.55);
+				//	selFreqEnd.setValue(1.6);
+				//	break;
+				case "NFC":
+					selFreqStart.setValue(13);
+					selFreqEnd.setValue(14);
+					break;
+			}
+		};
+
 
 		selFreqEnd.addVetoableChangeListener(freqEndVetoable);
 		selFreqStart.addVetoableChangeListener(freqStartVetoable);
+		selFreqQuick.addVetoableChangeListener(freqQuickVetoable);
 	}
 	
 	public void addPropertyChangeListener(PropertyChangeListener propertyChangeListener) {

@@ -57,6 +57,7 @@ public class HackRFSweepSettingsUI extends JPanel
 	private JLabel txtHackrfConnected;
 	private FrequencySelectorPanel frequencySelectorStart;
 	private FrequencySelectorPanel frequencySelectorEnd;
+	private QuickFrequencySelectorPanel quickFrequencySelector;
 	private JSpinner spinnerFFTBinHz;
 	private JSlider sliderGain;
 	private JSpinner spinner_numberOfSamples;
@@ -95,33 +96,41 @@ public class HackRFSweepSettingsUI extends JPanel
 		int maxFreq = 7250;
 		int freqStep = 1;
 
-		JPanel panelMainSettings	= new JPanel(new MigLayout("", "[123.00px,grow,leading]", "[][][::0px][][]"));
+		JPanel panelMainSettings	= new JPanel(new MigLayout("", "[123.00px,grow,leading]", "[][grow]"));
+
 		panelMainSettings.setBorder(new EmptyBorder(UIManager.getInsets("TabbedPane.tabAreaInsets")));;
 		panelMainSettings.setBackground(Color.BLACK);
+
+		JLabel lblQuickSelect = new JLabel("Quick Select");
+		lblQuickSelect.setForeground(Color.WHITE);
+		panelMainSettings.add(lblQuickSelect, "cell 0 0,alignx left,aligny center");
+
+		quickFrequencySelector = new QuickFrequencySelectorPanel();
+		panelMainSettings.add(quickFrequencySelector, "cell 0 1,growx,aligny center");
+
 		JLabel lblNewLabel = new JLabel("Frequency start [MHz]");
 		lblNewLabel.setForeground(Color.WHITE);
-		panelMainSettings.add(lblNewLabel, "cell 0 0,growx,aligny center");
+		panelMainSettings.add(lblNewLabel, "cell 0 2,growx,aligny center");
 
 		frequencySelectorStart = new FrequencySelectorPanel(minFreq, maxFreq, freqStep, minFreq);
-		panelMainSettings.add(frequencySelectorStart, "cell 0 1,grow");
+		panelMainSettings.add(frequencySelectorStart, "cell 0 3,growx,aligny center");
 
 		JLabel lblFrequencyEndmhz = new JLabel("Frequency end [MHz]");
 		lblFrequencyEndmhz.setForeground(Color.WHITE);
-		panelMainSettings.add(lblFrequencyEndmhz, "cell 0 3,alignx left,aligny center");
+		panelMainSettings.add(lblFrequencyEndmhz, "cell 0 15,alignx left,aligny center");
 
 		frequencySelectorEnd = new FrequencySelectorPanel(minFreq, maxFreq, freqStep, maxFreq);
-		panelMainSettings.add(frequencySelectorEnd, "cell 0 4,grow");
-		
+		panelMainSettings.add(frequencySelectorEnd, "cell 0 16,grow");
 		
 		txtHackrfConnected = new JLabel();
 		txtHackrfConnected.setText("HackRF disconnected");
 		txtHackrfConnected.setForeground(Color.WHITE);
 		txtHackrfConnected.setBackground(Color.BLACK);
-		panelMainSettings.add(txtHackrfConnected, "cell 0 23,growx");
+		panelMainSettings.add(txtHackrfConnected, "cell 0 24,growx");
 		txtHackrfConnected.setBorder(null);
 		
 		btnPause = new JButton("Pause");
-		panelMainSettings.add(btnPause, "cell 0 25,growx");
+		panelMainSettings.add(btnPause, "cell 0 26,growx");
 		btnPause.setBackground(Color.black);
 
 		
@@ -130,7 +139,7 @@ public class HackRFSweepSettingsUI extends JPanel
 		JTabbedPane tabbedPane	= new JTabbedPane(JTabbedPane.TOP);
 		setLayout(new BorderLayout());
 		add(panelMainSettings, BorderLayout.NORTH);
-		add(tabbedPane, BorderLayout.CENTER);
+		add(tabbedPane, BorderLayout.SOUTH);
 		tabbedPane.setForeground(Color.WHITE);
 		tabbedPane.setBackground(Color.BLACK);
 
@@ -361,7 +370,7 @@ public class HackRFSweepSettingsUI extends JPanel
 	}
 
 	private void bindViewToModel() {
-		frequencyRangeSelector = new FrequencySelectorRangeBinder(frequencySelectorStart, frequencySelectorEnd);
+		frequencyRangeSelector = new FrequencySelectorRangeBinder(frequencySelectorStart, frequencySelectorEnd, quickFrequencySelector);
 
 		new MVCController(spinnerFFTBinHz, hRF.getFFTBinHz(), 
 				viewValue -> Integer.parseInt(viewValue.toString().replaceAll("\\s", "")), 
