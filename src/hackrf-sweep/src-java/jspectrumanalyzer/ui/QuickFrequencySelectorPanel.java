@@ -30,13 +30,13 @@ public class QuickFrequencySelectorPanel extends JPanel
 	{
 		setBackground(Color.BLACK);
 
-		setLayout(new GridLayout(3, 3, 0, 0));
+		setLayout(new GridLayout(4, 3, 0, 0));
 
-		JButton button_wifi2 = new JButton("WiFi 2G");
+		JButton button_wifi2 = new JButton("WiFi 2");
 		button_wifi2.setBackground(Color.BLACK);
 		add(button_wifi2);
 
-		JButton button_wifi5 = new JButton("WiFi 5G");
+		JButton button_wifi5 = new JButton("WiFi 5");
 		button_wifi5.setBackground(Color.BLACK);
 		add(button_wifi5);
 
@@ -57,6 +57,26 @@ public class QuickFrequencySelectorPanel extends JPanel
 		button_fm.setBackground(Color.BLACK);
 		add(button_fm);
 
+		JButton button_hf = new JButton("HF");
+		button_hf.setBackground(Color.BLACK);
+		add(button_hf);
+
+		JButton button_vhf = new JButton("VHF");
+		button_vhf.setBackground(Color.BLACK);
+		add(button_vhf);
+
+		JButton button_uhf = new JButton("UHF");
+		button_uhf.setBackground(Color.BLACK);
+		add(button_uhf);
+
+		JButton button_vtv = new JButton("V-TV");
+		button_vtv.setBackground(Color.BLACK);
+		add(button_vtv);
+
+		JButton button_utv = new JButton("U-TV");
+		button_utv.setBackground(Color.BLACK);
+		add(button_utv);
+
 
 		button_wifi2.addActionListener(addListener("WiFi 2"));
 		button_wifi5.addActionListener(addListener("WiFi 5"));
@@ -64,8 +84,13 @@ public class QuickFrequencySelectorPanel extends JPanel
 		button_lte2.addActionListener(addListener("LTE-2"));
 		button_nfc.addActionListener(addListener("NFC"));
 		button_fm.addActionListener(addListener("FM"));
+		button_hf.addActionListener(addListener("HF"));
+		button_vhf.addActionListener(addListener("VHF"));
+		button_uhf.addActionListener(addListener("UHF"));
+		button_vtv.addActionListener(addListener("V-TV"));
+		button_utv.addActionListener(addListener("U-TV"));
 
-		Dimension d = new Dimension(175, 65);
+		Dimension d = new Dimension(300, 100);
 		setPreferredSize(d);
 		setMaximumSize(d);
 		setMinimumSize(d);

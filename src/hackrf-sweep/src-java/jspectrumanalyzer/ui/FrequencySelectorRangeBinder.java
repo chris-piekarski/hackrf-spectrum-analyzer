@@ -73,6 +73,27 @@ public class FrequencySelectorRangeBinder
 					selFreqStart.setValue(13);
 					selFreqEnd.setValue(14);
 					break;
+				case "HF":
+					selFreqStart.setValue(3);
+					selFreqEnd.setValue(30);
+					break;
+				case "VHF":
+					selFreqStart.setValue(30);
+					selFreqEnd.setValue(300);
+					break;
+				case "UHF":
+					selFreqStart.setValue(300);
+					selFreqEnd.setValue(3000);
+					break;
+				case "V-TV":
+					selFreqStart.setValue(54);
+					selFreqEnd.setValue(216);
+					break;
+				case "U-TV":
+					selFreqStart.setValue(470);
+					selFreqEnd.setValue(890);
+					break;
+
 			}
 		};
 

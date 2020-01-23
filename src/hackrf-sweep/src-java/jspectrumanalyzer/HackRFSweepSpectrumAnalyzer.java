@@ -235,15 +235,15 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 	private ModelValueInt							parameterPersistentDisplayPersTime 		= new ModelValueInt("Persistence time", 30, 1, 1, 60);
 	private ModelValueInt							parameterPeakFallRateSecs			= new ModelValueInt(
-			"Peak fall rate", 30);
+			"Peak fall rate", 15);
 	private ModelValueBoolean						parameterPersistentDisplay			= new ModelValueBoolean(
-			"Persistent display", false);
+			"Persistent display", true);
 
 	private ModelValueInt							parameterSamples					= new ModelValueInt("Samples",
 			8192);
 
 	private ModelValueBoolean						parameterShowPeaks					= new ModelValueBoolean(
-			"Show peaks", false);
+			"Show peaks", true);
 
 	private ModelValueBoolean 						parameterDebugDisplay				= new ModelValueBoolean("Debug", false);
 	
