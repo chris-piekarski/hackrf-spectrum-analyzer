@@ -1,0 +1,70 @@
+# Root Makefile for hackrf-spectrum-analyzer
+# Provides convenient top-level targets. The real build logic lives in src/hackrf-sweep/Makefile
+# (cd there and run make for advanced build options, or use these wrappers).
+#
+# Run 'make help' for colorful categorized usage.
+
+# Colors (work in most terminals)
+BLUE   := \033[0;34m
+GREEN  := \033[0;32m
+YELLOW := \033[0;33m
+CYAN   := \033[0;36m
+BOLD   := \033[1m
+NC     := \033[0m
+
+.DEFAULT_GOAL := help
+
+.PHONY: help
+help: ## Show this help (colorized with categories)
+	@echo ""
+	@echo "$(BOLD)$(CYAN)hackrf-spectrum-analyzer$(NC) - top level make targets"
+	@echo "$(YELLOW)Tip: cd src/hackrf-sweep && make help for the detailed native build targets$(NC)"
+	@echo ""
+	@awk 'BEGIN {FS = ":.*##"; printf "  $(YELLOW)%-15s$(NC) %s\n", "Target", "Description"} \
+		/^##@/ { printf "\n$(BOLD)%s$(NC)\n", substr($$0, 5) } \
+		/^[a-zA-Z_0-9-]+:.*?##/ { printf "  $(GREEN)%-15s$(NC) %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@echo ""
+	@echo "Examples:"
+	@echo "  make build"
+	@echo "  make test"
+	@echo "  make start"
+	@echo ""
+
+##@ Setup
+deps: ## Install all build and runtime dependencies (Ubuntu/Debian - recommended)
+	sudo apt update
+	sudo apt install -y \
+		build-essential \
+		maven \
+		git \
+		libusb-1.0-0-dev \
+		libfftw3-dev \
+		libfftw3-bin \
+		default-jdk \
+		mingw-w64
+
+runtime-deps: ## Install only what's needed to run (after a build)
+	sudo apt update
+	sudo apt install -y default-jdk libusb-1.0-0 libfftw3-bin
+
+##@ Build
+build: ## Build the full application (jar + natives + zip). Delegates to subdir.
+	$(MAKE) -C src/hackrf-sweep all
+
+clean: ## Clean build artifacts (delegates to subdir).
+	$(MAKE) -C src/hackrf-sweep clean
+
+##@ Test & Quality
+test: ## Run unit tests (Maven).
+	cd src/hackrf-sweep && mvn clean test
+
+lint: ## Run Maven compile (acts as basic lint/quality check).
+	cd src/hackrf-sweep && mvn clean compile
+
+##@ Run
+start: build ## Build if needed, then launch the Linux app.
+	./src/hackrf-sweep/build/hackrf-spectrum-analyzer/hackrf_sweep_spectrum_analyzer_linux.sh
+
+run: start ## Alias for start.
+
+.PHONY: build clean test lint start run help deps runtime-deps
