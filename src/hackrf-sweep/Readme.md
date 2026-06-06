@@ -1,8 +1,10 @@
-#Spectrum Analyzer GUI for hackrf_sweep for Windows
+# Spectrum Analyzer GUI for hackrf_sweep
 
-###Source code compilation instructions
+See the project documentation:
 
-yet to be written...
+- [../../README.md](../../README.md)
+- [../../docs/README.md](../../docs/README.md) (especially building.md and development.md)
 
-###License:
-GPL v3 
+### License
+GPL v3
+

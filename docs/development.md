@@ -1,0 +1,110 @@
+# Development Guide
+
+## Getting the Code
+
+```bash
+git clone --recurse-submodules https://github.com/chris-piekarski/hackrf-spectrum-analyzer.git
+cd hackrf-spectrum-analyzer
+make help
+```
+
+## Daily Development Workflow
+
+```mermaid
+flowchart TD
+    A[make help] --> B[Make changes in src/]
+    B --> C[Add/update unit tests in core/]
+    C --> D[make test]
+    D --> E[make lint]
+    E --> F[make start<br/>verify with real HackRF]
+    F --> G[Update docs/]
+    G --> H[Commit & PR]
+    H --> A
+```
+
+## Testing
+
+We have **23 unit test classes** focused on the pure Java core logic.
+
+```bash
+make test
+# or
+cd src/hackrf-sweep && mvn clean test
+```
+
+Coverage report:
+
+```bash
+cd src/hackrf-sweep && mvn clean test jacoco:report
+# open target/site/jacoco/index.html
+```
+
+**Guideline**: New logic in `jspectrumanalyzer/core/` should come with unit tests. Use synthetic `DatasetSpectrum` / `FFTBins` data. Reflection is acceptable for controlling time-based or internal graphics state in `PersistentDisplay` and `DatasetSpectrumPeak`.
+
+### Test → Coverage Workflow
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant Make as make test
+    participant Maven as mvn test
+    participant JaCoCo as JaCoCo Agent
+    participant Report as target/site/jacoco
+
+    Dev->>Make: make test
+    Make->>Maven: mvn clean test
+    Maven->>JaCoCo: Instrument classes
+    Maven->>Maven: Run JUnit tests (23 classes)
+    JaCoCo->>Report: Generate coverage data
+    Maven-->>Make: Report summary
+    Dev->>Report: Open index.html
+    Note over Dev,Report: Aim for >80% on core/
+```
+
+
+## Linting & Quality
+
+```bash
+make lint          # Runs Maven compile
+```
+
+There is currently no strict Java formatter or Checkstyle enforced, but please keep code style consistent with surrounding files.
+
+For the native C parts, a clang-format command is commented in the Makefile.
+
+## Documentation
+
+- All user/developer documentation lives under `docs/`.
+- Keep `docs/` in sync with `make help` output.
+- The root `README.md` and `AGENTS.md` should be updated when processes change significantly.
+- Do **not** edit the legacy `Readme.md` files — they are being phased toward the `docs/` structure.
+
+## Architecture Notes
+
+See [architecture.md](architecture.md) for a high-level overview.
+
+Key directories:
+- `src/hackrf-sweep/src/main/java/jspectrumanalyzer/core/` — Pure DSP logic (best place for unit tests)
+- `src/hackrf-sweep/src/main/java/jspectrumanalyzer/ui/` — Swing UI
+- `src/hackrf-sweep/src/main/java/jspectrumanalyzer/nativebridge/` — JNA glue
+- `src/hackrf-sweep/src-c/` — Patch that turns hackrf_sweep into a library
+- `src/hackrf-sweep/lib/hackrf/` — Submodule (automatically patched during build)
+
+## Working with AI Agents
+
+See the root `AGENTS.md` file. It contains specific instructions for coding agents (always start with `make help`, prefer `docs/`, add tests for core changes, etc.).
+
+## Releasing
+
+1. Bump version in `Version.java` (and any other places).
+2. Run full `make build`.
+3. Test the resulting zip/launcher on target platforms.
+4. Tag and push.
+
+## Getting Help
+
+- Run `make help`
+- Read the docs under `docs/`
+- Check existing issues / discussions on GitHub
+
+Happy hacking!
