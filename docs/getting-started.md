@@ -41,6 +41,7 @@ From the repository root:
 
 ```bash
 make help          # See all available targets
+make info          # Confirm the HackRF, show app SDK/API pin, check for firmware/SDK updates
 make build
 make start         # Builds (if needed) and launches the Linux app
 ```

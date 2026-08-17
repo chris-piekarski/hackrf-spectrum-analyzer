@@ -47,14 +47,18 @@ You will also need the HackRF sources (handled automatically by the build via su
 
 ### From Repository Root
 
-| Target     | Description                          |
-|------------|--------------------------------------|
-| `build`    | Full build (delegates to subdir)    |
-| `clean`    | Remove all build artifacts          |
-| `test`     | Run unit tests                      |
-| `lint`     | Maven compile check                 |
-| `start`    | Launch the Linux app                |
-| `run`      | Alias for `start`                   |
+| Target          | Description                          |
+|-----------------|--------------------------------------|
+| `build`         | Full build (delegates to subdir)    |
+| `clean`         | Remove all build artifacts          |
+| `test`          | Run unit tests                      |
+| `test-hw`       | Hardware ITs (skips if no HackRF)   |
+| `info`          | HackRF USB, app SDK/API, firmware updates |
+| `list-devices`  | Alias for `info`                    |
+| `firmware-update` | Official GSG flash (dry-run; `CONFIRM=1` writes) |
+| `lint`          | Maven compile check                 |
+| `start`         | Launch the Linux app                |
+| `run`           | Alias for `start`                   |
 
 ### Inside `src/hackrf-sweep/`
 

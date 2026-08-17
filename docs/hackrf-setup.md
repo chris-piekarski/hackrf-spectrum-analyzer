@@ -16,7 +16,18 @@ Proper USB permissions and firmware are critical for reliable operation.
 
 **Minimum recommended**: v2024.02.1
 
-Update instructions: https://hackrf.readthedocs.io/en/latest/updating_firmware.html
+From this repo (HackRF One attached, usbfs writable):
+
+```bash
+make firmware-update                         # dry-run: detect board, download image, print sha256
+make firmware-update VERSION=2026.01.3 CONFIRM=1   # write SPI flash
+```
+
+`CONFIRM=1` is required to write. The target refuses HackRF Pro images on a One, refuses if the usbfs node is not writable, and is **not** run by `make build` or `make test`.
+
+After a write, press RESET (WSL: `usbipd detach` / `attach`) and run `make info`.
+
+Official instructions: https://hackrf.readthedocs.io/en/latest/updating_firmware.html
 
 It is often easiest to perform the update from a Linux virtual machine.
 
@@ -50,10 +61,38 @@ Log out and back in (or reboot).
 Verify with:
 
 ```bash
-hackrf_info
+make info          # USB, device firmware, app SDK/USB API pin, and whether a newer GSG release exists
+hackrf_info        # official tool (optional; same firmware fields)
 ```
 
-You should see your device without permission errors.
+You should see your device without permission errors. `make info` still lists the USB node if firmware cannot be read (typical WSL `root:root` usbfs).
+
+## WSL2 (Windows host, Linux build)
+
+Windows does not share USB with WSL2 until you attach the device:
+
+```powershell
+usbipd list
+usbipd bind --busid <BUSID>          # once, as Administrator
+usbipd attach --wsl --busid <BUSID>  # after each unplug/reboot
+```
+
+HackRF One is `1d50:6089`. In WSL, `lsusb` should then show Great Scott Gadgets HackRF One.
+
+usbipd device nodes are often `root:root` and not writable. Either add the udev rule below or:
+
+```bash
+sudo chmod a+rw /dev/bus/usb/00X/00Y
+```
+
+List the radio and run hardware smoke tests (not part of `make test`):
+
+```bash
+make info          # USB + firmware + SDK/API versions vs latest GSG release
+make test-hw
+```
+
+They skip if no HackRF is enumerated. The sweep IT also needs `libhackrf-sweep.so` from `make build` and a writable usbfs node.
 
 ## Windows
 
