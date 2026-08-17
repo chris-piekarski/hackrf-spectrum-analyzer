@@ -47,7 +47,9 @@ public class FrequencyAllocationTable {
 	public ArrayList<FrequencyBand> getFrequencyBands(long startHz, long endHz){
 		FrequencyBand startBand	= lookupBand(startHz);
 		ArrayList<FrequencyBand> bands	= new ArrayList<>();
-		SortedSet<FrequencyBand> entries = frequencyBands.tailSet(startBand);
+		SortedSet<FrequencyBand> entries = (startBand == null)
+				? frequencyBands
+				: frequencyBands.tailSet(startBand);
 		for (FrequencyBand frequencyBand : entries) {
 			if (frequencyBand.getHzStartIncl() > endHz) {
 				break;

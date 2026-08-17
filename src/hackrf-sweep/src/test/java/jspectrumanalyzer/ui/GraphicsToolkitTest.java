@@ -28,12 +28,9 @@ class GraphicsToolkitTest {
 
     @Test
     void testInvalidSize() {
-        // Should still return something, or handle gracefully
         BufferedImage img = GraphicsToolkit.createAcceleratedImageOpaque(0, 0);
-        // Graphics config may return null or throw, but in practice for tests:
-        // We just ensure no crash in normal use; for 0 it may be degenerate
-        if (img != null) {
-            assertEquals(0, img.getWidth());
-        }
+        assertNotNull(img);
+        assertTrue(img.getWidth() >= 1);
+        assertTrue(img.getHeight() >= 1);
     }
 }

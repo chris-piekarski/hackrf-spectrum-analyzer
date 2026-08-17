@@ -32,11 +32,13 @@ make test
 cd src/hackrf-sweep && mvn clean test
 ```
 
-Coverage report:
+`make test` must stay green. Tests compile as Java 8 (no `var`). Surefire runs headless; `GraphicsToolkit` falls back to `BufferedImage` so image/DSP tests still execute.
+
+Coverage report (JaCoCo is attached via `@{argLine}` in `pom.xml`):
 
 ```bash
-cd src/hackrf-sweep && mvn clean test jacoco:report
-# open target/site/jacoco/index.html
+make test
+# open src/hackrf-sweep/target/site/jacoco/index.html
 ```
 
 **Guideline**: New logic in `jspectrumanalyzer/core/` should come with unit tests. Use synthetic `DatasetSpectrum` / `FFTBins` data. Reflection is acceptable for controlling time-based or internal graphics state in `PersistentDisplay` and `DatasetSpectrumPeak`.
@@ -58,7 +60,7 @@ sequenceDiagram
     JaCoCo->>Report: Generate coverage data
     Maven-->>Make: Report summary
     Dev->>Report: Open index.html
-    Note over Dev,Report: Aim for >80% on core/
+    Note over Dev,Report: Aim for >80% on core/; project ~50% before large refactors
 ```
 
 
@@ -93,6 +95,8 @@ Key directories:
 ## Working with AI Agents
 
 See the root `AGENTS.md` file. It contains specific instructions for coding agents (always start with `make help`, prefer `docs/`, add tests for core changes, etc.).
+
+Living work plans (coverage, larger refactors) live under [plans/](plans/README.md). The current coverage plan is [plans/unit-test-coverage.md](plans/unit-test-coverage.md).
 
 ## Syncing with Upstream
 

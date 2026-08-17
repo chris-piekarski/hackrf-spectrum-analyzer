@@ -45,9 +45,8 @@ make test
 # or directly
 cd src/hackrf-sweep && mvn clean test
 
-# Coverage report
-cd src/hackrf-sweep && mvn clean test jacoco:report
-# Open target/site/jacoco/index.html
+# Coverage report is written by `make test` (JaCoCo report bound to the test phase)
+# Open src/hackrf-sweep/target/site/jacoco/index.html
 ```
 
 We have **25 unit test classes** focused on the core DSP logic (SpurFilter, PersistentDisplay, DatasetSpectrum*, allocations, EMA, etc.). These run without hardware.
@@ -72,6 +71,7 @@ All first-class documentation lives under `docs/`:
 - [docs/usage.md](docs/usage.md) — Running the analyzer, features, quick selects
 - [docs/architecture.md](docs/architecture.md) — High-level design (core, native, UI)
 - [docs/contributing.md](docs/contributing.md)
+- [docs/plans/](docs/plans/README.md) — living implementation plans (status + checklists must stay current)
 
 **Diagrams**: Use Mermaid (```mermaid) for flowcharts, sequence diagrams, etc. in the docs. GitHub renders them natively. See architecture.md and building.md for examples.
 
@@ -113,6 +113,7 @@ Root-level files:
 - Prefer editing files under `docs/` for documentation rather than root-level Readme files.
 - When asked to add tests, prioritize the `core/` package and use existing patterns (synthetic data, reflection for time/graphics state where needed).
 - After structural changes (new targets, new docs, major refactors), update this `AGENTS.md` and `docs/development.md`.
+- Save implementation plans under `docs/plans/<name>.md` and list them in `docs/plans/README.md`. Keep the Status block and checkboxes in sync with what is actually done; do not leave stale items.
 - Do not assume a full Java environment is available in all contexts — many verification steps require the user to run `mvn` / `make` locally.
 - For coverage work, after adding tests run the JaCoCo report and report specific class/line improvements.
 

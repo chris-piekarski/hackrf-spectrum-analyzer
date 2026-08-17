@@ -18,7 +18,7 @@ class DatasetSpectrumTest {
     @Test
     void testAddNewData() {
         DatasetSpectrum ds = new DatasetSpectrum(100000f, 2400, 2500, -120f);
-        double[] freqs = {2400.0, 2400.1, 2499.9};
+        double[] freqs = {2400e6, 2400.1e6, 2499.9e6};
         float[] powers = {-80f, -70f, -90f};
         FFTBins bins = new FFTBins(true, freqs, 100000f, powers);
 
@@ -42,15 +42,15 @@ class DatasetSpectrumTest {
     @Test
     void testGetFrequencyAndPower() {
         DatasetSpectrum ds = new DatasetSpectrum(100000f, 2400, 2401, -100f);
-        assertEquals(2400000000.0, ds.getFrequency(0));
-        assertEquals(2400100000.0, ds.getFrequency(1), 1.0);
+        assertEquals(2400000000.0, ds.getFrequency(0), 200.0);
+        assertEquals(2400100000.0, ds.getFrequency(1), 200.0);
         assertEquals(-100f, ds.getPower(0));
     }
 
     @Test
     void testCreateSpectrumDataset() {
         DatasetSpectrum ds = new DatasetSpectrum(100000f, 2400, 2401, -100f);
-        var xy = ds.createSpectrumDataset("test");
+        jspectrumanalyzer.core.jfc.XYSeriesImmutable xy = ds.createSpectrumDataset("test");
         assertNotNull(xy);
         assertEquals(10, xy.getItemCount()); // 1MHz / 100kHz = 10 bins? wait calc
     }

@@ -1,6 +1,9 @@
 package jspectrumanalyzer.core;
 
 import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.HashMap;
+
 import org.junit.jupiter.api.Test;
 
 class FrequencyAllocationsTest {
@@ -8,7 +11,7 @@ class FrequencyAllocationsTest {
     @Test
     void testLoadsBuiltinTables() {
         FrequencyAllocations allocs = new FrequencyAllocations();
-        var tables = allocs.getTable();
+        HashMap<String, FrequencyAllocationTable> tables = allocs.getTable();
 
         assertTrue(tables.size() >= 2, "Should have at least Europe and USA tables");
         assertTrue(tables.containsKey("Europe"));
@@ -16,6 +19,7 @@ class FrequencyAllocationsTest {
 
         FrequencyAllocationTable europe = tables.get("Europe");
         assertNotNull(europe);
-        assertTrue(europe.getBandCount() > 10);
+        assertTrue(europe.getFrequencyBands(0L, Long.MAX_VALUE).size() > 10);
+        assertNotNull(europe.lookupBand(100000000L));
     }
 }

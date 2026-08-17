@@ -64,7 +64,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/x
 <version>3.2.5</version>
 <configuration>
 <!-- Allow running the capturegif mode or other main-class things if needed in future -->
-<argLine>-Djava.awt.headless=true</argLine>
+<argLine>@{argLine} -Djava.awt.headless=true</argLine>
 </configuration>
 </plugin>
 

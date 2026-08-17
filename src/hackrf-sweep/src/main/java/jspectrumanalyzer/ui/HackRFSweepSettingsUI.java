@@ -5,7 +5,6 @@ import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Font;
 import java.awt.GridLayout;
-import java.awt.Label;
 import java.beans.PropertyChangeEvent;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -244,7 +243,7 @@ public class HackRFSweepSettingsUI extends JPanel
 		    }
 		});
 		
-		Label labelVersion = new Label("Version: "+Version.version);
+		JLabel labelVersion = new JLabel("Version: "+Version.version);
 		tab1.add(labelVersion, "flowx,cell 0 17");
 		btnAbout.setBackground(Color.BLACK);
 		tab1.add(btnAbout, "cell 0 17,alignx right");

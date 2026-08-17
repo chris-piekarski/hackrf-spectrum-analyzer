@@ -59,9 +59,9 @@ class DatasetSpectrumPeakTest {
         peak.lastAdded = System.currentTimeMillis() - 100;
         peak.refreshPeakSpectrum();
 
-        // much lower
+        // much lower; use a large dt so EMA k is high enough to exceed the 5 dB threshold
         spectrum[0] = -70f;
-        peak.lastAdded = System.currentTimeMillis() - 100;
+        peak.lastAdded = System.currentTimeMillis() - 1000;
         peak.refreshPeakSpectrum();
 
         // now hold should have fallen

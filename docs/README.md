@@ -11,6 +11,7 @@ This directory contains the first-class documentation for the **hackrf-spectrum-
 - [Usage & Features](usage.md)
 - [Architecture](architecture.md)
 - [Contributing](contributing.md)
+- [Plans](plans/README.md) — living implementation plans (keep status/checklists current)
 
 ## Diagrams
 

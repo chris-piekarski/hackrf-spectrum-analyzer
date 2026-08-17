@@ -8,6 +8,8 @@ import java.util.function.Consumer;
 import javax.swing.JCheckBox;
 import javax.swing.JSlider;
 import javax.swing.JSpinner;
+import javax.swing.SpinnerListModel;
+import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.Test;
 
@@ -16,87 +18,83 @@ import shared.mvc.ModelValue.ModelValueInt;
 
 class MVCControllerTest {
 
+    private static void flushEdt() throws Exception {
+        SwingUtilities.invokeAndWait(() -> { });
+    }
+
     @Test
-    void testGenericConstructorSyncsModelToView() {
+    void testGenericConstructorSyncsModelToView() throws Exception {
         ModelValueInt model = new ModelValueInt("test", 42);
         AtomicReference<Integer> viewValue = new AtomicReference<>(0);
 
-        new MVCController<>(
-            listener -> { /* no initial listener for test */ },
+        new MVCController(
+            listener -> { },
             viewValue::set,
             model,
             v -> v,
             v -> v
         );
 
-        // sync is called in ctor
+        flushEdt();
         assertEquals(42, viewValue.get().intValue());
     }
 
     @Test
-    void testGenericViewToModel() {
+    void testGenericViewToModel() throws Exception {
         ModelValueInt model = new ModelValueInt("test", 0);
-        AtomicReference<Integer> lastModel = new AtomicReference<>(0);
-
-        MVCController.ViewAddChangeListener<Integer> viewListener = cb -> {
-            // simulate view change by calling the consumer
-            // but in real it's added by ctor
-        };
-
-        // To test, we need to trigger the listener added by ctor.
-        // Use a holder.
         final Consumer<Integer>[] holder = new Consumer[1];
         MVCController.ViewAddChangeListener<Integer> mockView = cb -> holder[0] = cb;
 
-        new MVCController<>(
+        new MVCController(
             mockView,
-            v -> {},
+            v -> { },
             model,
             v -> v,
             v -> v
         );
 
-        // Now simulate view change
         holder[0].accept(99);
+        flushEdt();
         assertEquals(99, model.getValue().intValue());
     }
 
     @Test
-    void testJCheckBoxBinding() {
+    void testJCheckBoxBinding() throws Exception {
         JCheckBox cb = new JCheckBox();
         ModelValueBoolean model = new ModelValueBoolean("flag", true);
         new MVCController(cb, model);
+        flushEdt();
 
         assertTrue(cb.isSelected());
         assertTrue(model.getValue());
 
-        cb.setSelected(false);
-        // listener should fire? In test, change event needs to be simulated or use doClick
-        cb.doClick(); // this should trigger
+        SwingUtilities.invokeAndWait(cb::doClick);
+        flushEdt();
         assertFalse(model.getValue());
     }
 
     @Test
-    void testJSliderBinding() {
+    void testJSliderBinding() throws Exception {
         JSlider slider = new JSlider(0, 100, 50);
         ModelValueInt model = new ModelValueInt("gain", 50, 1, 0, 100);
         new MVCController(slider, model);
+        flushEdt();
 
         assertEquals(50, slider.getValue());
         assertEquals(50, model.getValue().intValue());
 
-        slider.setValue(75);
-        // ChangeEvent needs to be fired; setValue may not auto fire listener in all cases, use setValue and simulate
-        // For simplicity, test initial sync
+        SwingUtilities.invokeAndWait(() -> slider.setValue(75));
+        flushEdt();
+        assertEquals(75, model.getValue().intValue());
     }
 
     @Test
-    void testJSpinnerBinding() {
-        JSpinner spinner = new JSpinner();
+    void testJSpinnerBinding() throws Exception {
+        JSpinner spinner = new JSpinner(new SpinnerListModel(new String[] { "8192", "16384", "32768" }));
         ModelValueInt model = new ModelValueInt("samples", 8192);
         new MVCController(spinner, model, val -> Integer.parseInt(val.toString()), val -> val.toString());
+        flushEdt();
 
-        // Initial sync
         assertEquals("8192", spinner.getValue().toString());
     }
 }
