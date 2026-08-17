@@ -178,11 +178,26 @@ clean: ## Clean all build artifacts (mvn + obj + build dirs)
 	rm -rf $(OUTPUT_DLL_DIR) $(BUILD_PATH) $(OUTPUT_PATH)/* bin/*
 
 ##@ Test & Quality
+.PHONY: test test-hw lint info list-devices
 test: ## Run unit tests via Maven (in subdir context)
 	mvn clean test
 
+test-hw: ## Hardware ITs (@Tag hardware / *IT). Skips if no HackRF USB device.
+	mvn test -Phardware -DfailIfNoTests=false
+
 lint: ## Run compile/lint checks via Maven (basic quality gate)
 	mvn clean compile
+
+##@ Hardware
+.PHONY: info list-devices firmware-update
+info: ## List HackRF devices, app SDK/API versions, and upstream updates
+	@$(abspath $(CURDIR)/../../scripts/hackrf-info.sh)
+
+list-devices: info ## Alias for info
+
+firmware-update: ## Flash official GSG firmware (dry-run; CONFIRM=1 to write)
+	@CONFIRM=$(CONFIRM) VERSION=$(VERSION) FIRMWARE=$(FIRMWARE) SERIAL=$(SERIAL) \
+		$(abspath $(CURDIR)/../../scripts/hackrf-firmware-update.sh)
 
 ##@ Run & Dev
 start: build ## Build (if needed) then start the Linux app (assumes build artifacts present)

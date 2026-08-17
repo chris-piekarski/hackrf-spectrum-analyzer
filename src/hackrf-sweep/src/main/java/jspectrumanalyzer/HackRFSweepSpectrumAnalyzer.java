@@ -68,7 +68,6 @@ import org.jfree.chart.ui.TextAnchor;
 
 import jspectrumanalyzer.capture.ScreenCapture;
 import jspectrumanalyzer.core.DatasetSpectrumPeak;
-import jspectrumanalyzer.core.FFTBins;
 import jspectrumanalyzer.core.FrequencyAllocationTable;
 import jspectrumanalyzer.core.FrequencyAllocations;
 import jspectrumanalyzer.core.FrequencyBand;
@@ -77,6 +76,7 @@ import jspectrumanalyzer.core.GainPolicy;
 import jspectrumanalyzer.core.HackRFSettings;
 import jspectrumanalyzer.core.PersistentDisplay;
 import jspectrumanalyzer.core.RuntimePerformanceWatch;
+import jspectrumanalyzer.core.SpectrumSweepEngine;
 import jspectrumanalyzer.core.SpurFilter;
 import jspectrumanalyzer.core.jfc.XYSeriesCollectionImmutable;
 import jspectrumanalyzer.nativebridge.HackRFSweepDataCallback;
@@ -130,7 +130,6 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private ChartPanel								chartPanel;
 	private ColorScheme								colors								= new ColorScheme();
 	private DatasetSpectrumPeak						datasetSpectrum;
-	private int										dropped								= 0;
 	private volatile boolean						flagManualGain						= false;
 	private volatile boolean						forceStopSweep						= false;
 	/**
@@ -138,8 +137,6 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	 */
 	private ScreenCapture							gifCap								= null;
 	private ArrayList<HackRFEventListener>			hRFlisteners							= new ArrayList<>();
-	private ArrayBlockingQueue<FFTBins>				hwProcessingQueue						= new ArrayBlockingQueue<>(
-			1000);
 	private BufferedImage							imageFrequencyAllocationTableBands	= null;
 	private boolean											isChartDrawing						= false;
 	private ReentrantLock							lock								= new ReentrantLock();
@@ -195,6 +192,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private PersistentDisplay						persistentDisplay					= new PersistentDisplay();
 	private float									spectrumInitValue					= -150;
 	private SpurFilter								spurFilter;
+	private SpectrumSweepEngine						sweepEngine;
 	private Thread									threadHackrfSweep;
 	private ArrayBlockingQueue<Integer>				threadLaunchCommands				= new ArrayBlockingQueue<>(1);
 	private Thread									threadLauncher;
@@ -313,6 +311,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 		printInit(6);
 
+		sweepEngine = new SpectrumSweepEngine(this, spectrumInitValue, new SweepUiHooks());
 		startLauncherThread();
 		restartHackrfSweep();
 
@@ -441,12 +440,9 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	@Override
 	public void newSpectrumData(boolean fullSweepDone, double[] frequencyStart, float fftBinWidthHz,
 			float[] signalPowerdBm) {
-		//		System.out.println(frequencyStart+" "+fftBinWidthHz+" "+signalPowerdBm);
 		fireHardwareStateChanged(true);
-		if (!hwProcessingQueue.offer(new FFTBins(fullSweepDone, frequencyStart, fftBinWidthHz, signalPowerdBm))) {
-			System.out.println("queue full");
-			dropped++;
-		}
+		if (sweepEngine != null)
+			sweepEngine.accept(fullSweepDone, frequencyStart, fftBinWidthHz, signalPowerdBm);
 	}
 
 	@Override
@@ -498,196 +494,94 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		//		System.out.println("Startup "+(initNumber++)+" in " + (System.currentTimeMillis() - initTime) + "ms");
 	}
 
-	private void processingThread() {
-		long counter = 0;
-		long frameCounterChart = 0;
+	private final class SweepUiHooks implements SpectrumSweepEngine.Hooks {
+		private long lastChartUpdated = System.currentTimeMillis();
+		private long frameCounterChart = 0;
+		private final int limitChartRefreshFPS = 30;
+		private final int limitPersistentRefreshEveryChartFrame = 2;
+		private final XYSeries spectrumPeaksEmpty = new XYSeries("peaks");
 
-		//mainWhile:
-		//while(true)
-		{
-			FFTBins bin1 = null;
-			try {
-				bin1 = hwProcessingQueue.take();
-			} catch (InterruptedException e1) {
-				return;
-			}
-			float binHz = bin1.fftBinWidthHz;
+		@Override
+		public void onPacketAccepted() {
+			fireHardwareStateChanged(true);
+		}
 
-			/**
-			 * prevents from spectrum chart from using too much CPU
-			 */
-			int limitChartRefreshFPS		= 30;
-			int limitPersistentRefreshEveryChartFrame	= 2;
-			
-			//			PowerCalibration calibration	 = new PowerCalibration(-45, -12.5, 40); 
-
-			datasetSpectrum = new DatasetSpectrumPeak(binHz, getFreq().getStartMHz(), getFreq().getEndMHz(),
-					spectrumInitValue, 15, parameterPeakFallRateSecs.getValue() * 1000);
+		@Override
+		public void onFirstDataset(DatasetSpectrumPeak ds, float fftBinHz) {
+			datasetSpectrum = ds;
+			spurFilter = sweepEngine.getSpurFilter();
 			chart.getXYPlot().getDomainAxis().setRange(getFreq().getStartMHz(), getFreq().getEndMHz());
+		}
 
-			XYSeries spectrumPeaksEmpty	= new XYSeries("peaks");
-			
-			float maxPeakJitterdB = 6;
-			float peakThresholdAboveNoise = 4;
-			int maxPeakBins = 4;
-			int validIterations = 25;
-			spurFilter = new SpurFilter(maxPeakJitterdB, peakThresholdAboveNoise, maxPeakBins, validIterations,
-					datasetSpectrum);
-
-			long lastChartUpdated = System.currentTimeMillis();
-			long lastScanStartTime = System.currentTimeMillis();
-			double lastFreq = 0;
-
-			while (true) {
-				try {
-					counter++;
-					FFTBins bins = hwProcessingQueue.take();
-					if (parameterIsCapturingPaused.getValue())
-						continue;
-					boolean triggerChartRefresh = bins.fullSweepDone;
-					//continue;
-				
-					if (bins.freqStart != null && bins.sigPowdBm != null) {
-						//						PowerCalibration.correctPower(calibration, parameterGaindB, bins);
-						datasetSpectrum.addNewData(bins);
-					}
-
-					if ((triggerChartRefresh/* || timeDiff > 1000 */)) {
-						//						System.out.println("ctr "+counter+" dropped "+dropped);
-						/**
-						 * filter first
-						 */
-						if (parameterSpurRemoval.getValue()) {
-							long start	= System.nanoTime();
-							spurFilter.filterDataset();
-							synchronized (perfWatch) {
-								perfWatch.spurFilter.addDrawingTime(System.nanoTime()-start);
-							}
-						}
-						/**
-						 * after filtering, calculate peak spectrum
-						 */
-						if (parameterShowPeaks.getValue()) {
-							datasetSpectrum.refreshPeakSpectrum();
-							waterfallPlot.setStatusMessage(String.format("Total Spectrum Peak Power %.1fdBm",
-									datasetSpectrum.calculateSpectrumPeakPower()), 0);
-						}
-
-						/**
-						 * Update performance counters
-						 */
-						if (System.currentTimeMillis() - perfWatch.lastStatisticsRefreshed > 1000) {
-							synchronized (perfWatch) {
-//								waterfallPlot.setStatusMessage(perfWatch.generateStatistics(), 1);
-								perfWatch.waterfallDraw.nanosSum	= waterfallPlot.getDrawTimeSumAndReset();
-								perfWatch.waterfallDraw.count	= waterfallPlot.getDrawingCounterAndReset();
-								String stats	= perfWatch.generateStatistics();
-								SwingUtilities.invokeLater(() -> {
-									labelMessages.setText(stats);
-								});
-								perfWatch.reset();
-							}
-						}
-
-						boolean flagChartRedraw	= false;
-						/**
-						 * Update chart in the swing thread
-						 */
-						if (System.currentTimeMillis() - lastChartUpdated > 1000/limitChartRefreshFPS) {
-							flagChartRedraw	= true;
-							frameCounterChart++;
-							lastChartUpdated = System.currentTimeMillis();
-						}
-
-						
-						XYSeries spectrumSeries;
-						XYSeries spectrumPeaks;
-
-						if (true) {
-							spectrumSeries = datasetSpectrum.createSpectrumDataset("spectrum");
-
-							if (parameterShowPeaks.getValue()) {
-								spectrumPeaks = datasetSpectrum.createPeaksDataset("peaks");
-							} else {
-								spectrumPeaks = spectrumPeaksEmpty;
-							}
-						} else {
-							spectrumSeries = new XYSeries("spectrum", false, true);
-							spectrumSeries.setNotify(false);
-							datasetSpectrum.fillToXYSeries(spectrumSeries);
-							spectrumSeries.setNotify(true);
-
-							spectrumPeaks =
-									//									new XYSeries("peaks");
-									new XYSeries("peaks", false, true);
-							if (parameterShowPeaks.getValue()) {
-								spectrumPeaks.setNotify(false);
-								datasetSpectrum.fillPeaksToXYSeries(spectrumPeaks);
-								spectrumPeaks.setNotify(false);
-							}
-						}
-
-						if (parameterPersistentDisplay.getValue()) {
-							long start	= System.nanoTime();
-							boolean redraw	= false;
-							if (flagChartRedraw && frameCounterChart % limitPersistentRefreshEveryChartFrame == 0)
-								redraw	= true;
-							
-							//persistentDisplay.drawSpectrumFloat
-							persistentDisplay.drawSpectrum2
-							(datasetSpectrum,
-									(float) chart.getXYPlot().getRangeAxis().getRange().getLowerBound(),
-									(float) chart.getXYPlot().getRangeAxis().getRange().getUpperBound(), redraw);
-							synchronized (perfWatch) {
-								perfWatch.persisentDisplay.addDrawingTime(System.nanoTime()-start);	
-							}
-						}
-
-						/**
-						 * do not render it in swing thread because it might
-						 * miss data
-						 */
-						if (parameterWaterfallVisible.getValue()) {
-							long start	= System.nanoTime();
-							waterfallPlot.addNewData(datasetSpectrum);
-							synchronized (perfWatch) {
-								perfWatch.waterfallUpdate.addDrawingTime(System.nanoTime()-start);	
-							}
-						}
-						
-						if (flagChartRedraw) {
-							if (parameterWaterfallVisible.getValue()) {
-								waterfallPlot.repaint();
-							}
-							SwingUtilities.invokeLater(() -> {
-
-								chart.setNotify(false);
-
-								chartDataset.removeAllSeries();
-								chartDataset.addSeries(spectrumPeaks);
-								chartDataset.addSeries(spectrumSeries);
-								chart.setNotify(true);
-
-								if (gifCap != null) {
-									gifCap.captureFrame();
-								}
-							});
-						}
-
-						synchronized (perfWatch) {
-							perfWatch.hwFullSpectrumRefreshes++;
-						}
-
-						counter = 0;
-					}
-
-				} catch (InterruptedException e) {
-					return;
+		@Override
+		public void onFullSweepProcessed(DatasetSpectrumPeak ds) {
+			datasetSpectrum = ds;
+			if (parameterShowPeaks.getValue()) {
+				waterfallPlot.setStatusMessage(String.format("Total Spectrum Peak Power %.1fdBm",
+						datasetSpectrum.calculateSpectrumPeakPower()), 0);
+			}
+			if (System.currentTimeMillis() - perfWatch.lastStatisticsRefreshed > 1000) {
+				synchronized (perfWatch) {
+					perfWatch.waterfallDraw.nanosSum = waterfallPlot.getDrawTimeSumAndReset();
+					perfWatch.waterfallDraw.count = waterfallPlot.getDrawingCounterAndReset();
+					String stats = perfWatch.generateStatistics();
+					SwingUtilities.invokeLater(() -> {
+						labelMessages.setText(stats);
+					});
+					perfWatch.reset();
 				}
 			}
 
-		}
+			boolean flagChartRedraw = false;
+			if (System.currentTimeMillis() - lastChartUpdated > 1000 / limitChartRefreshFPS) {
+				flagChartRedraw = true;
+				frameCounterChart++;
+				lastChartUpdated = System.currentTimeMillis();
+			}
 
+			XYSeries spectrumSeries = datasetSpectrum.createSpectrumDataset("spectrum");
+			XYSeries spectrumPeaks = parameterShowPeaks.getValue() ? datasetSpectrum.createPeaksDataset("peaks")
+					: spectrumPeaksEmpty;
+
+			if (parameterPersistentDisplay.getValue()) {
+				long start = System.nanoTime();
+				boolean redraw = flagChartRedraw && frameCounterChart % limitPersistentRefreshEveryChartFrame == 0;
+				persistentDisplay.drawSpectrum2(datasetSpectrum,
+						(float) chart.getXYPlot().getRangeAxis().getRange().getLowerBound(),
+						(float) chart.getXYPlot().getRangeAxis().getRange().getUpperBound(), redraw);
+				synchronized (perfWatch) {
+					perfWatch.persisentDisplay.addDrawingTime(System.nanoTime() - start);
+				}
+			}
+
+			if (parameterWaterfallVisible.getValue()) {
+				long start = System.nanoTime();
+				waterfallPlot.addNewData(datasetSpectrum);
+				synchronized (perfWatch) {
+					perfWatch.waterfallUpdate.addDrawingTime(System.nanoTime() - start);
+				}
+			}
+
+			if (flagChartRedraw) {
+				if (parameterWaterfallVisible.getValue()) {
+					waterfallPlot.repaint();
+				}
+				SwingUtilities.invokeLater(() -> {
+					chart.setNotify(false);
+					chartDataset.removeAllSeries();
+					chartDataset.addSeries(spectrumPeaks);
+					chartDataset.addSeries(spectrumSeries);
+					chart.setNotify(true);
+					if (gifCap != null) {
+						gifCap.captureFrame();
+					}
+				});
+			}
+
+			synchronized (perfWatch) {
+				perfWatch.hwFullSpectrumRefreshes++;
+			}
+		}
 	}
 
 	private void recalculateGains(int totalGain) {
@@ -718,6 +612,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			Thread.currentThread().setName("hackrf_sweep");
 			try {
 				forceStopSweep = false;
+				if (sweepEngine != null)
+					sweepEngine.clearStop();
 				sweep();
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -1132,6 +1028,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	 */
 	private void stopHackrfSweep() {
 		forceStopSweep = true;
+		if (sweepEngine != null)
+			sweepEngine.requestStop();
 		if (threadHackrfSweep != null) {
 			while (threadHackrfSweep.isAlive()) {
 				forceStopSweep = true;
@@ -1167,31 +1065,19 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		try {
 			threadProcessing = new Thread(() -> {
 				Thread.currentThread().setName("hackrf_sweep data processing thread");
-				processingThread();
+				sweepEngine.runProcessingLoop();
 			});
 			threadProcessing.start();
 
-			/**
-			 * Ensures auto-restart if HW disconnects
-			 */
-			while (forceStopSweep == false) {
-				System.out.println(
-						"Starting hackrf_sweep... " + getFreq().getStartMHz() + "-" + getFreq().getEndMHz() + "MHz ");
-				System.out.println("hackrf_sweep params:  freq " + getFreq().getStartMHz() + "-" + getFreq().getEndMHz()
-						+ "MHz  FFTBin " + parameterFFTBinHz.getValue() + "Hz  samples " + parameterSamples.getValue()
-						+ "  lna: " + parameterGainLNA.getValue() + " vga: " + parameterGainVGA.getValue()
-						+ " antPwr:" + parameterAntPower.getValue() + " antLNA:" + parameterAntennaLNA.getValue());
-				fireHardwareStateChanged(false);
-				HackRFSweepNativeBridge.start(this, getFreq().getStartMHz(), getFreq().getEndMHz(),
-						parameterFFTBinHz.getValue(), parameterSamples.getValue(), parameterGainLNA.getValue(),
-						parameterGainVGA.getValue(), parameterAntPower.getValue(), parameterAntennaLNA.getValue());
-				fireHardwareStateChanged(false);
-				if (forceStopSweep == false) {
-					Thread.sleep(1000);
-				}
-			}
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+			System.out.println(
+					"Starting hackrf_sweep... " + getFreq().getStartMHz() + "-" + getFreq().getEndMHz() + "MHz ");
+			System.out.println("hackrf_sweep params:  freq " + getFreq().getStartMHz() + "-" + getFreq().getEndMHz()
+					+ "MHz  FFTBin " + parameterFFTBinHz.getValue() + "Hz  samples " + parameterSamples.getValue()
+					+ "  lna: " + parameterGainLNA.getValue() + " vga: " + parameterGainVGA.getValue() + " antPwr:"
+					+ parameterAntPower.getValue() + " antLNA:" + parameterAntennaLNA.getValue());
+			fireHardwareStateChanged(false);
+			sweepEngine.runSweepLoop();
+			fireHardwareStateChanged(false);
 		} finally {
 			lock.unlock();
 			fireHardwareStateChanged(false);

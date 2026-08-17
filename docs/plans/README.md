@@ -18,3 +18,4 @@ _None._
 | Plan | Outcome |
 |---|---|
 | [Unit test coverage](unit-test-coverage.md) | Done 2026-08-17. `make test` 104/104. Project **56.1%** lines, `core` **90.2%**. |
+| [Hardware integration tests](hardware-integration-tests.md) | Done 2026-08-17. Gated `make test-hw` (7 ITs, including `SpectrumSweepEngine` queue + dataset). `make test` stays radio-free. |

@@ -20,7 +20,13 @@ public class HackRFSweepNativeBridge
 		 * to make sure unpacked jnidispatch.dll is properly loaded
 		 * jnidispatch.dll is used directly instead of JNA bundled jar, because it is much faster to load
 		 */
-		String pathPrefix	= "./"+Platform.RESOURCE_PREFIX+"/";
+		String configured = System.getProperty("hackrf.sweep.lib.dir");
+		String pathPrefix;
+		if (configured != null && !configured.isEmpty()) {
+			pathPrefix = configured.endsWith("/") || configured.endsWith("\\") ? configured : configured + "/";
+		} else {
+			pathPrefix = "./"+Platform.RESOURCE_PREFIX+"/";
+		}
 		System.setProperty("jna.boot.library.path", pathPrefix);
 		System.setProperty("jna.nosys", "true");
 //		Native.DEBUG_JNA_LOAD	= true;

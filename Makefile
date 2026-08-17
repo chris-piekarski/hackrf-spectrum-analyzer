@@ -27,6 +27,7 @@ help: ## Show this help (colorized with categories)
 	@echo "Examples:"
 	@echo "  make build"
 	@echo "  make test"
+	@echo "  make info"
 	@echo "  make start"
 	@echo ""
 
@@ -55,11 +56,24 @@ clean: ## Clean build artifacts (delegates to subdir).
 	$(MAKE) -C src/hackrf-sweep clean
 
 ##@ Test & Quality
-test: ## Run unit tests (Maven).
+test: ## Run unit tests (Maven). Hardware tests are excluded.
 	cd src/hackrf-sweep && mvn clean test
+
+test-hw: ## Hardware smoke tests (skips if no HackRF). Does not run under make test.
+	$(MAKE) -C src/hackrf-sweep test-hw
 
 lint: ## Run Maven compile (acts as basic lint/quality check).
 	cd src/hackrf-sweep && mvn clean compile
+
+##@ Hardware
+info: ## List HackRF devices, app SDK/API versions, and upstream updates
+	@$(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts/hackrf-info.sh
+
+list-devices: info ## Alias for info
+
+firmware-update: ## Flash official GSG firmware (dry-run; CONFIRM=1 to write)
+	@CONFIRM=$(CONFIRM) VERSION=$(VERSION) FIRMWARE=$(FIRMWARE) SERIAL=$(SERIAL) \
+		$(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts/hackrf-firmware-update.sh
 
 ##@ Run
 start: build ## Build if needed, then launch the Linux app.
@@ -67,4 +81,4 @@ start: build ## Build if needed, then launch the Linux app.
 
 run: start ## Alias for start.
 
-.PHONY: build clean test lint start run help deps runtime-deps
+.PHONY: build clean test test-hw lint info list-devices firmware-update start run help deps runtime-deps

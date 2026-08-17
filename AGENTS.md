@@ -30,7 +30,10 @@ This shows all available targets with descriptions and categories (colorized).
 ### Common Targets (from root)
 
 - `make build` — Full build (natives + JAR + zip)
-- `make test` — Run unit tests (Maven + JaCoCo)
+- `make test` — Run unit tests (Maven + JaCoCo). Does **not** require a HackRF.
+- `make test-hw` — Hardware ITs (`*IT`, `@Tag("hardware")`): USB, firmware/USB API/board, `SpectrumSweepEngine` queue + dataset, start/stop/restart, LNA + antenna-power, FFT/freq restart. Skips if no radio.
+- `make info` — List attached HackRF devices, the SDK/USB API this app is pinned to, and whether a newer GSG firmware/libhackrf exists. Alias: `make list-devices`
+- `make firmware-update` — Dry-run official GSG SPI flash. Write only with `CONFIRM=1` (optional `VERSION=2026.01.3`). Not part of `build` / `test`.
 - `make lint` — Compile/lint checks
 - `make start` — Build (if needed) + launch the Linux app
 - `make clean` — Clean build artifacts
@@ -49,7 +52,7 @@ cd src/hackrf-sweep && mvn clean test
 # Open src/hackrf-sweep/target/site/jacoco/index.html
 ```
 
-We have **28 unit test classes** focused on the core DSP logic (SpurFilter, PersistentDisplay, DatasetSpectrum*, allocations, EMA, etc.). These run without hardware.
+We have **30 unit test classes** focused on the core DSP logic (SpurFilter, PersistentDisplay, DatasetSpectrum*, allocations, EMA, firmware parse, SpectrumSweepEngine, etc.). These run without hardware.
 
 ### Building Details
 

@@ -65,6 +65,11 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/x
 <configuration>
 <!-- Allow running the capturegif mode or other main-class things if needed in future -->
 <argLine>@{argLine} -Djava.awt.headless=true</argLine>
+<!-- Hardware / integration tests: *IT.java and @Tag("hardware"). Use make test-hw. -->
+<excludedGroups>hardware</excludedGroups>
+<excludes>
+<exclude>**/*IT.java</exclude>
+</excludes>
 </configuration>
 </plugin>
 
@@ -90,4 +95,25 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/x
 </plugin>
 </plugins>
 </build>
+<profiles>
+<profile>
+<id>hardware</id>
+<build>
+<plugins>
+<plugin>
+<artifactId>maven-surefire-plugin</artifactId>
+<configuration>
+<excludedGroups combine.self="override"/>
+<groups>hardware</groups>
+<includes>
+<include>**/*IT.java</include>
+</includes>
+<excludes combine.self="override"/>
+<failIfNoTests>false</failIfNoTests>
+</configuration>
+</plugin>
+</plugins>
+</build>
+</profile>
+</profiles>
 </project>
