@@ -811,8 +811,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		NumberAxis domainAxis = ((NumberAxis) plot.getDomainAxis());
 		NumberAxis rangeAxis = ((NumberAxis) plot.getRangeAxis());
 		chartLineRenderer = new XYLineAndShapeRenderer();
-		chartLineRenderer.setBaseShapesVisible(false);
-		chartLineRenderer.setBaseStroke(new BasicStroke(parameterSpectrumLineThickness.getValue().floatValue()));
+		chartLineRenderer.setDefaultShapesVisible(false);
+		chartLineRenderer.setDefaultStroke(new BasicStroke(parameterSpectrumLineThickness.getValue().floatValue()));
 
 		rangeAxis.setAutoRange(false);
 		rangeAxis.setRange(-110, 20);
@@ -868,7 +868,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		domainAxis.setTickLabelFont(labelFont);
 		domainAxis.setLabelPaint(colors.palette1);
 		domainAxis.setTickLabelPaint(colors.palette1);
-		chartLineRenderer.setBasePaint(Color.white);
+		chartLineRenderer.setDefaultPaint(Color.white);
 		plot.setBackgroundPaint(colors.palette4);
 		chart.setBackgroundPaint(colors.palette4);
 		chartLineRenderer.setSeriesPaint(1, colors.palette1);
@@ -1129,7 +1129,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		});
 
 		parameterSpectrumLineThickness.addListener((thickness) -> {
-			SwingUtilities.invokeLater(() -> chartLineRenderer.setBaseStroke(new BasicStroke(thickness.floatValue())));
+			SwingUtilities.invokeLater(() -> chartLineRenderer.setDefaultStroke(new BasicStroke(thickness.floatValue())));
 		});
 		
 		parameterPersistentDisplayPersTime.addListener((time) -> {

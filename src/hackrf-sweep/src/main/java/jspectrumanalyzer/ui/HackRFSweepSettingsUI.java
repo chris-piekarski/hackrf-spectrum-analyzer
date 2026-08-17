@@ -85,6 +85,11 @@ public class HackRFSweepSettingsUI extends JPanel
 	private JLabel lblDebugDisplay;
 	private JCheckBox checkBoxDebugDisplay;
 
+	public HackRFSweepSettingsUI()
+	{
+		this(null);
+	}
+
 	/**
 	 * Create the panel.
 	 */
@@ -205,12 +210,14 @@ public class HackRFSweepSettingsUI extends JPanel
 		sliderGain.setForeground(Color.WHITE);
 		tab1.add(sliderGain, "flowy,cell 0 1,growx");
 
-		JLabel lbl_gainValue = new JLabel(hackRFSettings.getGain() + "dB");
+		JLabel lbl_gainValue = new JLabel(hRF == null ? "0" : hRF.getGain() + "dB");
 		lbl_gainValue.setForeground(Color.WHITE);
 		tab1.add(lbl_gainValue, "cell 0 1,alignx right");
 
-		hackRFSettings.getGain().addListener((gain) -> lbl_gainValue.setText(String.format(" %ddB  [LNA: %ddB  VGA: %ddB]", 
-				gain, hackRFSettings.getGainLNA().getValue(), hackRFSettings.getGainVGA().getValue())));
+		if (hRF != null) {
+			hRF.getGain().addListener((gain) -> lbl_gainValue.setText(String.format(" %ddB  [LNA: %ddB  VGA: %ddB]", 
+					gain, hRF.getGainLNA().getValue(), hRF.getGainVGA().getValue())));
+		}
 		
 
 		JLabel lblNumberOfSamples = new JLabel("Number of samples");
@@ -363,7 +370,7 @@ public class HackRFSweepSettingsUI extends JPanel
 		tab2.add(checkBoxWaterfallEnabled, "cell 0 0,alignx right");
 		
 		comboBoxDecayRate = new JComboBox(
-				new Vector<>(IntStream.rangeClosed(hRF.getPersistentDisplayDecayRate().getMin(), hRF.getPersistentDisplayDecayRate().getMax()).
+				new Vector<>(IntStream.rangeClosed(hRF != null ? hRF.getPersistentDisplayDecayRate().getMin() : 0, hRF != null ? hRF.getPersistentDisplayDecayRate().getMax() : 1).
 						boxed().collect(Collectors.toList())));
 		tab2.add(comboBoxDecayRate, "cell 0 16,alignx right");
 		
@@ -377,7 +384,8 @@ public class HackRFSweepSettingsUI extends JPanel
 		tab2.add(checkBoxDebugDisplay, "cell 0 22,alignx right");
 		
 		
-		bindViewToModel();
+		if (hRF != null)
+			bindViewToModel();
 	}
 
 	private void bindViewToModel() {

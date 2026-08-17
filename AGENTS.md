@@ -50,7 +50,7 @@ cd src/hackrf-sweep && mvn clean test jacoco:report
 # Open target/site/jacoco/index.html
 ```
 
-We have **23 unit test classes** focused on the core DSP logic (SpurFilter, PersistentDisplay, DatasetSpectrum*, allocations, EMA, etc.). These run without hardware.
+We have **25 unit test classes** focused on the core DSP logic (SpurFilter, PersistentDisplay, DatasetSpectrum*, allocations, EMA, etc.). These run without hardware.
 
 ### Building Details
 
@@ -115,6 +115,10 @@ Root-level files:
 - After structural changes (new targets, new docs, major refactors), update this `AGENTS.md` and `docs/development.md`.
 - Do not assume a full Java environment is available in all contexts — many verification steps require the user to run `mvn` / `make` locally.
 - For coverage work, after adding tests run the JaCoCo report and report specific class/line improvements.
+
+## Upstream
+
+GitHub's "ahead/behind" count vs `pavsa/hackrf-spectrum-analyzer` is misleading: the histories share no commit SHAs (rewritten old commits). Do not rebase onto `upstream/master`. Port individual upstream bugfixes onto this tree. See [docs/development.md](docs/development.md#syncing-with-upstream).
 
 ## Known Limitations / Gotchas
 

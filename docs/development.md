@@ -24,7 +24,7 @@ flowchart TD
 
 ## Testing
 
-We have **23 unit test classes** focused on the pure Java core logic.
+We have **25 unit test classes** focused on the pure Java core logic.
 
 ```bash
 make test
@@ -54,7 +54,7 @@ sequenceDiagram
     Dev->>Make: make test
     Make->>Maven: mvn clean test
     Maven->>JaCoCo: Instrument classes
-    Maven->>Maven: Run JUnit tests (23 classes)
+    Maven->>Maven: Run JUnit tests (25 classes)
     JaCoCo->>Report: Generate coverage data
     Maven-->>Make: Report summary
     Dev->>Report: Open index.html
@@ -93,6 +93,33 @@ Key directories:
 ## Working with AI Agents
 
 See the root `AGENTS.md` file. It contains specific instructions for coding agents (always start with `make help`, prefer `docs/`, add tests for core changes, etc.).
+
+## Syncing with Upstream
+
+This repo is a GitHub fork of [pavsa/hackrf-spectrum-analyzer](https://github.com/pavsa/hackrf-spectrum-analyzer), but the two histories do **not** share commit SHAs (the old commits were rewritten). GitHub's "N commits ahead / M commits behind" banner therefore counts *every* commit on both sides and is not a reliable merge signal.
+
+Do **not** rebase this fork onto `upstream/master` or merge with a default recursive strategy — that would fight the Maven layout, tests, docs, and Quick Select work.
+
+The 2024 upstream release (`v2024.11.10`) is already absorbed: Antenna LNA, hackrf `v2024.02.1` submodule + patch, Maven dependencies (JFreeChart 1.5 / JNA 5.15 / MigLayout 11), min FFT bin size, and the JFreeChart 1.5 renderer API.
+
+To inspect future upstream changes:
+
+```bash
+git remote add upstream https://github.com/pavsa/hackrf-spectrum-analyzer.git   # once
+git fetch upstream
+git log --oneline master..upstream/master
+git diff master upstream/master -- src/hackrf-sweep/src/main/java
+```
+
+Port individual bugfixes by reading the upstream commit and applying the same change onto this tree. Keep fork-only files (Quick Select, `docs/`, tests, root `Makefile`).
+
+If you have already reviewed and ported everything you want from the current upstream tip, you can record that without taking their tree:
+
+```bash
+git merge --allow-unrelated-histories -s ours upstream/master
+```
+
+That marks upstream as an ancestor so GitHub shows 0 behind, while leaving this fork's files untouched. Only do this after a file-level review.
 
 ## Releasing
 
