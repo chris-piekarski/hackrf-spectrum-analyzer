@@ -107,8 +107,6 @@ public class WaterfallPlot extends JPanel {
 		double startFreq = spectrum.getFreqStartMHz() * 1000000d;
 		double freqRange = (spectrum.getFreqStopMHz() - spectrum.getFreqStartMHz()) * 1000000d;
 		double width = bufferedImages[0].getWidth();
-		double spectrumPalleteMax = spectrumPaletteStart + spectrumPaletteSize;
-
 		this.lastSpectrum = spectrum;
 
 		/**
@@ -137,22 +135,10 @@ public class WaterfallPlot extends JPanel {
 		if (true) {
 			//optimized drawing
 			double widthDivSize = (double)width / size;
-			double inverseSpectrumPaletteSize	= 1d/spectrumPaletteSize;
-			double spectrumPaletteStartDivSpectrumPaletteSize	= (double)spectrumPaletteStart/spectrumPaletteSize;
 			for (int i = 0; i < size; i++) {
 				double power = spectrum.getPower(i);
-				double percentagePower	= 0;
-				if (power > spectrumPaletteStart) {
-					if ( power < spectrumPalleteMax) { 
-//						percentagePower	= (power - spectrumPaletteStart) / spectrumPaletteSize;
-						//percentagePower	= power/spectrumPaletteSize - spectrumPaletteStart/spectrumPaletteSize;
-						percentagePower	= power*inverseSpectrumPaletteSize - spectrumPaletteStartDivSpectrumPaletteSize;
-					}
-					else
-						percentagePower = 1;
-				}
-				int pixelX = (int) Math.round(widthDivSize * i);
-				pixelX = pixelX >= drawMaxBuffer.length ? drawMaxBuffer.length - 1 : pixelX < 0 ? 0 : pixelX;
+				double percentagePower = normalizePower(power, spectrumPaletteStart, spectrumPaletteSize);
+				int pixelX = clampPixelX((int) Math.round(widthDivSize * i), drawMaxBuffer.length);
 				if (percentagePower > drawMaxBuffer[pixelX])
 					drawMaxBuffer[pixelX] = (float) percentagePower;
 			}
@@ -162,10 +148,8 @@ public class WaterfallPlot extends JPanel {
 				double freq = spectrum.getFrequency(i);
 				double power = spectrum.getPower(i);
 				double percentageFreq = (freq - startFreq) / freqRange;
-				double percentagePower = power < spectrumPaletteStart ? 0
-						: power > spectrumPalleteMax ? 1 : (power - spectrumPaletteStart) / spectrumPaletteSize;
-				int pixelX = (int) Math.round(width * percentageFreq);
-				pixelX = pixelX >= drawMaxBuffer.length ? drawMaxBuffer.length - 1 : pixelX < 0 ? 0 : pixelX;
+				double percentagePower = normalizePower(power, spectrumPaletteStart, spectrumPaletteSize);
+				int pixelX = clampPixelX((int) Math.round(width * percentageFreq), drawMaxBuffer.length);
 				if (percentagePower > drawMaxBuffer[pixelX])
 					drawMaxBuffer[pixelX] = (float) percentagePower;
 			}
@@ -293,19 +277,46 @@ public class WaterfallPlot extends JPanel {
 		g.dispose();
 	}
 
+	/**
+	 * Maps a power sample onto the waterfall palette, 0 (at or below start) to 1 (at or above start+size).
+	 */
+	public static double normalizePower(double power, double paletteStart, double paletteSize) {
+		if (paletteSize <= 0)
+			return 0;
+		if (power <= paletteStart)
+			return 0;
+		if (power >= paletteStart + paletteSize)
+			return 1;
+		return (power - paletteStart) / paletteSize;
+	}
+
+	public static int clampPixelX(int pixelX, int bufferLength) {
+		if (bufferLength <= 0)
+			return 0;
+		if (pixelX >= bufferLength)
+			return bufferLength - 1;
+		if (pixelX < 0)
+			return 0;
+		return pixelX;
+	}
+
+	public static double translateXToFrequency(int x, int chartWidth, double startFreqHz, double stopFreqHz) {
+		if (chartWidth <= 0)
+			return -1;
+		double freqRange = (stopFreqHz - startFreqHz);
+		double freq = (x / (double) chartWidth) * freqRange + startFreqHz;
+		if (freq > stopFreqHz)
+			freq = stopFreqHz;
+		if (freq < startFreqHz)
+			freq = startFreqHz;
+		return freq;
+	}
+
 	private double translateChartXToFrequency(int x) {
 		if (lastSpectrum != null) {
 			double startFreq = lastSpectrum.getFreqStartMHz() * 1000000d;
 			double stopFreq = lastSpectrum.getFreqStopMHz() * 1000000d;
-			double freqRange = (stopFreq - startFreq);
-			double width = bufferedImages[0].getWidth();
-			double percentageFreq = x / (double) chartWidth;
-			double freq = percentageFreq * freqRange + startFreq;
-			if (freq > stopFreq)
-				freq = stopFreq;
-			if (freq < startFreq)
-				freq = startFreq;
-			return freq;
+			return translateXToFrequency(x, chartWidth, startFreq, stopFreq);
 		}
 		return -1;
 	}

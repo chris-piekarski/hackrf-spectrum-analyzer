@@ -27,18 +27,31 @@ class FrequencySelectorPanelTest {
 
     @Test
     void testAddSubtractDigits() {
-        FrequencySelectorPanel panel = new FrequencySelectorPanel(0, 9999, 1, 1000);
-        panel.setValue(1234);
+        FrequencySelectorPanel panel = new FrequencySelectorPanel(0, 9999, 1, 1234);
+        java.awt.Component[] children = panel.getComponents();
+        javax.swing.JButton plusUnits = (javax.swing.JButton) children[3];
+        javax.swing.JButton plusTens = (javax.swing.JButton) children[2];
+        javax.swing.JButton minusThousands = (javax.swing.JButton) children[8];
 
-        // simulate +1 (units)
-        // since buttons private, call setValue which uses internal
-        // but to test add/sub logic, we can use set and check, but better use listeners? 
-        // The add/sub are private, but we can test via setValue bounds.
-        panel.setValue(1234);
-        // To test getMultiplier indirectly via behavior
-        // +1 should go to 1235 if within range
-        assertTrue(panel.setValue(1235));
+        plusUnits.doClick();
         assertEquals(1235, panel.getValue());
+        plusTens.doClick();
+        assertEquals(1245, panel.getValue());
+        minusThousands.doClick();
+        assertEquals(245, panel.getValue());
+    }
+
+    @Test
+    void digitButtonsClampAtMinAndMax() {
+        FrequencySelectorPanel panel = new FrequencySelectorPanel(100, 200, 1, 200);
+        javax.swing.JButton plusThousands = (javax.swing.JButton) panel.getComponents()[0];
+        plusThousands.doClick();
+        assertEquals(200, panel.getValue());
+
+        panel.setValue(100);
+        javax.swing.JButton minusUnits = (javax.swing.JButton) panel.getComponents()[11];
+        minusUnits.doClick();
+        assertEquals(100, panel.getValue());
     }
 
     @Test

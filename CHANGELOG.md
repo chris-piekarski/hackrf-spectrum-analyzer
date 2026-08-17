@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Comprehensive unit test suite (25 test classes) focused on core DSP logic
+- Comprehensive unit test suite (28 test classes) focused on core DSP logic
 - First-class `docs/` documentation structure
 - Root `README.md`, `AGENTS.md`, `CONTRIBUTING.md`
 - Improved top-level `Makefile` with `make help`, `make test`, `make lint`, `make start`, categorized colored output
@@ -22,5 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Finish remaining pavsa/hackrf-spectrum-analyzer v2024.11.10 ports: JFreeChart 1.5 renderer API (`setDefault*` instead of removed `setBase*`) and Settings UI null-safety for no-arg/designer construction
 - `make test` is a real gate: Java 8-compatible tests, JaCoCo agent no longer dropped by Surefire, headless `GraphicsToolkit` fallback, null-safe allocation-table range queries, and Settings version `JLabel` (AWT `Label` threw in headless)
+- Extracted `GainPolicy` and `RuntimePerformanceWatch` from the analyzer for unit testing; waterfall palette/x mapping is now static and tested
+- Settings UI, Quick Select bands, and frequency-selector digit buttons covered without constructing the native analyzer
 
 See the [docs/](docs/) directory for current usage and development information.

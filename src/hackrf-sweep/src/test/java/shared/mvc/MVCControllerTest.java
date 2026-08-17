@@ -6,10 +6,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JSlider;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerListModel;
 import javax.swing.SwingUtilities;
+
+import shared.mvc.ModelValue;
 
 import org.junit.jupiter.api.Test;
 
@@ -96,5 +99,22 @@ class MVCControllerTest {
         flushEdt();
 
         assertEquals("8192", spinner.getValue().toString());
+    }
+
+    @Test
+    void testJComboBoxBinding() throws Exception {
+        JComboBox<String> box = new JComboBox<String>(new String[] { "a", "b", "c" });
+        ModelValue<String> model = new ModelValue<String>("choice", "a");
+        new MVCController(box, model);
+        flushEdt();
+
+        assertEquals("a", box.getSelectedItem());
+        SwingUtilities.invokeAndWait(() -> box.setSelectedItem("b"));
+        flushEdt();
+        assertEquals("b", model.getValue());
+
+        model.setValue("c");
+        flushEdt();
+        assertEquals("c", box.getSelectedItem());
     }
 }

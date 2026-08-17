@@ -479,4 +479,32 @@ public class HackRFSweepSettingsUI extends JPanel
 		
 	}
 
+	JButton pauseButton() {
+		return btnPause;
+	}
+
+	JLabel connectedLabel() {
+		return txtHackrfConnected;
+	}
+
+	JSpinner fftBinSpinner() {
+		return spinnerFFTBinHz;
+	}
+
+	JCheckBox showPeaksCheckbox() {
+		return chckbxShowPeaks;
+	}
+
+	JSpinner peakFallSpinner() {
+		return spinnerPeakFallSpeed;
+	}
+
+	JCheckBox persistentDisplayCheckbox() {
+		return checkBoxPersistentDisplay;
+	}
+
+	JComboBox decayRateCombo() {
+		return comboBoxDecayRate;
+	}
+
 }

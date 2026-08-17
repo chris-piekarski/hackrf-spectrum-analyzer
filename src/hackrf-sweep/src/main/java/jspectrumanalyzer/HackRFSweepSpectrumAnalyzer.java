@@ -73,8 +73,10 @@ import jspectrumanalyzer.core.FrequencyAllocationTable;
 import jspectrumanalyzer.core.FrequencyAllocations;
 import jspectrumanalyzer.core.FrequencyBand;
 import jspectrumanalyzer.core.FrequencyRange;
+import jspectrumanalyzer.core.GainPolicy;
 import jspectrumanalyzer.core.HackRFSettings;
 import jspectrumanalyzer.core.PersistentDisplay;
+import jspectrumanalyzer.core.RuntimePerformanceWatch;
 import jspectrumanalyzer.core.SpurFilter;
 import jspectrumanalyzer.core.jfc.XYSeriesCollectionImmutable;
 import jspectrumanalyzer.nativebridge.HackRFSweepDataCallback;
@@ -87,76 +89,6 @@ import shared.mvc.ModelValue.ModelValueBoolean;
 import shared.mvc.ModelValue.ModelValueInt;
 
 public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepDataCallback {
-
-	private static class PerformanceEntry{
-		final String name;
-		long nanosSum;
-		int count;
-		public PerformanceEntry(String name) {
-			this.name 	= name;
-		}
-		public void addDrawingTime(long nanos) {
-			nanosSum	+= nanos;
-			count++;
-		}
-		public void reset() {
-			count	= 0;
-			nanosSum	= 0;
-		}
-		@Override
-		public String toString() {
-			return name;
-		}
-	}
-	
-	private static class RuntimePerformanceWatch {
-		/**
-		 * incoming full spectrum updates from the hardware
-		 */
-		int				hwFullSpectrumRefreshes	= 0;
-		volatile long	lastStatisticsRefreshed	= System.currentTimeMillis();
-		PerformanceEntry persisentDisplay	= new PerformanceEntry("Pers.disp");
-		PerformanceEntry waterfallUpdate	= new PerformanceEntry("Wtrfall.upd");
-		PerformanceEntry waterfallDraw	= new PerformanceEntry("Wtrfll.drw");
-		PerformanceEntry chartDrawing	= new PerformanceEntry("Spectr.chart");
-		PerformanceEntry spurFilter = new PerformanceEntry("Spur.fil");
-		
-		private ArrayList<PerformanceEntry> entries	= new ArrayList<>();
-		public RuntimePerformanceWatch() {
-			entries.add(persisentDisplay);
-			entries.add(waterfallUpdate);
-			entries.add(waterfallDraw);
-			entries.add(chartDrawing);
-			entries.add(spurFilter);
-		}
-		
-		public synchronized String generateStatistics() {
-			long timeElapsed = System.currentTimeMillis() - lastStatisticsRefreshed;
-			if (timeElapsed <= 0)
-				timeElapsed = 1;
-			StringBuilder b	= new StringBuilder();
-			long sumNanos	= 0;
-			for (PerformanceEntry entry : entries) {
-				sumNanos	+= entry.nanosSum;
-				float callsPerSec	= entry.count/(timeElapsed/1000f);
-				b.append(entry.name).append(String.format(" %3dms (%5.1f calls/s) \n", entry.nanosSum/1000000, callsPerSec));
-			}
-			b.append(String.format("Total: %4dms draw time/s: ", sumNanos/1000000));
-			return b.toString();
-//			double timeSpentDrawingChartPerSec = chartDrawingSum / (timeElapsed / 1000d) / 1000d;
-//			return String.format("Spectrum refreshes: %d / Chart redraws: %d / Drawing time in 1 sec %.2fs",
-//					hwFullSpectrumRefreshes, chartRedrawed, timeSpentDrawingChartPerSec);
-
-		}
-
-		public synchronized void reset() {
-			hwFullSpectrumRefreshes = 0;
-			for (PerformanceEntry dataDrawingEntry : entries) {
-				dataDrawingEntry.reset();
-			}
-			lastStatisticsRefreshed = System.currentTimeMillis();
-		}
-	}
 
 	/**
 	 * Color palette for UI
@@ -759,13 +691,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	}
 
 	private void recalculateGains(int totalGain) {
-		/**
-		 * use only lna gain when <=40 when >40, add only vga gain
-		 */
-		int lnaGain = totalGain / 8 * 8; //lna gain has step 8, range <0, 40>
-		if (lnaGain > 40)
-			lnaGain = 40;
-		int vgaGain = lnaGain != 40 ? 0 : ((totalGain - lnaGain) & ~1); //vga gain has step 2, range <0,60>
+		int lnaGain = GainPolicy.lnaGain(totalGain);
+		int vgaGain = GainPolicy.vgaGain(totalGain);
 		this.parameterGainLNA.setValue(lnaGain);
 		this.parameterGainVGA.setValue(vgaGain);
 		this.parameterGainTotal.setValue(lnaGain + vgaGain);

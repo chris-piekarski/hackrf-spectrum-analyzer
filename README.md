@@ -82,7 +82,7 @@ See [docs/building.md](docs/building.md) for the full native cross-build process
 
 ## Testing
 
-25 unit test classes focused on the core signal processing (no hardware required).
+28 unit test classes focused on the core signal processing (no hardware required).
 
 ```bash
 make test

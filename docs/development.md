@@ -24,7 +24,7 @@ flowchart TD
 
 ## Testing
 
-We have **25 unit test classes** focused on the pure Java core logic.
+We have **28 unit test classes** focused on the pure Java core logic.
 
 ```bash
 make test
@@ -56,7 +56,7 @@ sequenceDiagram
     Dev->>Make: make test
     Make->>Maven: mvn clean test
     Maven->>JaCoCo: Instrument classes
-    Maven->>Maven: Run JUnit tests (25 classes)
+    Maven->>Maven: Run JUnit tests (28 classes)
     JaCoCo->>Report: Generate coverage data
     Maven-->>Make: Report summary
     Dev->>Report: Open index.html

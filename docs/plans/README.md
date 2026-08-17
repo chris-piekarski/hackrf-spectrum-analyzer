@@ -11,10 +11,10 @@ Living implementation plans live here so later work (and agents) can pick them u
 
 ## Active
 
-| Plan | Status | Next |
-|---|---|---|
-| [Unit test coverage](unit-test-coverage.md) | In progress (Phase 0 done; Phase 1 core target already met) | Phase 2 — Settings / MVC / Quick Select |
+_None._
 
 ## Done
 
-_None yet._
+| Plan | Outcome |
+|---|---|
+| [Unit test coverage](unit-test-coverage.md) | Done 2026-08-17. `make test` 104/104. Project **56.1%** lines, `core` **90.2%**. |

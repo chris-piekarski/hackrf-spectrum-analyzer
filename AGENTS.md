@@ -49,7 +49,7 @@ cd src/hackrf-sweep && mvn clean test
 # Open src/hackrf-sweep/target/site/jacoco/index.html
 ```
 
-We have **25 unit test classes** focused on the core DSP logic (SpurFilter, PersistentDisplay, DatasetSpectrum*, allocations, EMA, etc.). These run without hardware.
+We have **28 unit test classes** focused on the core DSP logic (SpurFilter, PersistentDisplay, DatasetSpectrum*, allocations, EMA, etc.). These run without hardware.
 
 ### Building Details
 

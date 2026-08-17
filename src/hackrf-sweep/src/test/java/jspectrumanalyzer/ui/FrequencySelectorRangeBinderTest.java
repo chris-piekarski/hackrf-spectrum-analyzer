@@ -2,13 +2,26 @@ package jspectrumanalyzer.ui;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.awt.Component;
 import java.beans.PropertyVetoException;
+
+import javax.swing.JButton;
 
 import org.junit.jupiter.api.Test;
 
 import jspectrumanalyzer.core.FrequencyRange;
 
 class FrequencySelectorRangeBinderTest {
+
+    private static JButton buttonNamed(QuickFrequencySelectorPanel panel, String text) {
+        for (Component child : panel.getComponents()) {
+            if (child instanceof JButton && text.equals(((JButton) child).getText())) {
+                return (JButton) child;
+            }
+        }
+        fail("No button labeled " + text);
+        return null;
+    }
 
     @Test
     void testConstructionAndInitialRange() throws PropertyVetoException {
@@ -24,43 +37,58 @@ class FrequencySelectorRangeBinderTest {
     }
 
     @Test
-    void testQuickSelectWiFi2SetsRange() throws PropertyVetoException {
+    void quickSelectButtonsSetKnownRanges() {
         FrequencySelectorPanel start = new FrequencySelectorPanel(1, 7250, 1, 1000);
         FrequencySelectorPanel end = new FrequencySelectorPanel(1, 7250, 1, 3000);
         QuickFrequencySelectorPanel quick = new QuickFrequencySelectorPanel();
-
         FrequencySelectorRangeBinder binder = new FrequencySelectorRangeBinder(start, end, quick);
 
-        // Directly trigger the quick veto logic by simulating the property change the quick would fire.
-        // Since addVetoable is called in ctor, we can use the internal by firing on the quick panel.
-        // Quick's value change fires vetoable "value".
-        // We can use reflection or since it's test, call the public methods on panels and check binder.
-
-        // Better: set start/end via their API if public, but they use setValue which is package?
-        // FrequencySelectorPanel has no public setValue exposed in the code we saw.
-        // The binder listens to vetoable on the panels.
-
-        // Low-hanging: test that after construction the binder range matches, and adding listener works.
-        binder.addPropertyChangeListener(evt -> { /* no-op for test */ });
-
-        // For quick, since buttons private, we test the data in the switch by other means.
-        // We know from binder code the WiFi2 is 2401-2495.
-        // To trigger, we can directly manipulate if we expose, but for now assert the logic is wired by construction.
-        assertNotNull(binder);
+        Object[][] expected = {
+                { "WiFi 2", 2401, 2495 },
+                { "WiFi 5", 5030, 5875 },
+                { "LTE-1", 1890, 2200 },
+                { "LTE-2", 663, 915 },
+                { "FM", 88, 108 },
+                { "NFC", 13, 14 },
+                { "HF", 3, 30 },
+                { "VHF", 30, 300 },
+                { "UHF", 300, 3000 },
+                { "V-TV", 54, 216 },
+                { "U-TV", 470, 890 },
+        };
+        for (Object[] row : expected) {
+            buttonNamed(quick, (String) row[0]).doClick();
+            assertEquals(row[1], binder.getFrequencyRange().getStartMHz(), row[0] + " start");
+            assertEquals(row[2], binder.getFrequencyRange().getEndMHz(), row[0] + " end");
+            assertEquals(row[0], quick.getValue());
+        }
     }
 
     @Test
-    void testStartEndVetoEnforcesOrder() throws PropertyVetoException {
+    void startEndVetoKeepsOrderByNudgingTheOtherSelector() {
         FrequencySelectorPanel start = new FrequencySelectorPanel(1, 7250, 1, 2000);
         FrequencySelectorPanel end = new FrequencySelectorPanel(1, 7250, 1, 3000);
         QuickFrequencySelectorPanel quick = new QuickFrequencySelectorPanel();
-
         FrequencySelectorRangeBinder binder = new FrequencySelectorRangeBinder(start, end, quick);
 
-        // The veto logic is internal. We can test by setting values that would violate and see if binder range stays consistent.
-        // Since panels have internal text fields, hard without UI.
-        // This test mainly ensures no exception on wiring and basic range.
-        FrequencyRange range = binder.getFrequencyRange();
-        assertTrue(range.getStartMHz() <= range.getEndMHz());
+        assertTrue(start.setValue(3500));
+        assertEquals(3500, binder.getFrequencyRange().getStartMHz());
+        assertEquals(4500, binder.getFrequencyRange().getEndMHz());
+
+        assertTrue(end.setValue(2500));
+        assertEquals(1500, binder.getFrequencyRange().getStartMHz());
+        assertEquals(2500, binder.getFrequencyRange().getEndMHz());
+    }
+
+    @Test
+    void startAtMaxCannotCrossEnd() {
+        FrequencySelectorPanel start = new FrequencySelectorPanel(1, 7250, 1, 2000);
+        FrequencySelectorPanel end = new FrequencySelectorPanel(1, 7250, 1, 7250);
+        QuickFrequencySelectorPanel quick = new QuickFrequencySelectorPanel();
+        new FrequencySelectorRangeBinder(start, end, quick);
+
+        assertFalse(start.setValue(7250));
+        assertEquals(2000, start.getValue());
+        assertEquals(7250, end.getValue());
     }
 }

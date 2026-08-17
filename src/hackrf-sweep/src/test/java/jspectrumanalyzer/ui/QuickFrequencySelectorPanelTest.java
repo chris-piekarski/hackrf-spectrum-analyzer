@@ -22,8 +22,6 @@ class QuickFrequencySelectorPanelTest {
         QuickFrequencySelectorPanel panel = new QuickFrequencySelectorPanel();
 
         AtomicReference<String> lastProperty = new AtomicReference<>();
-        AtomicReference<String> lastVetoOld = new AtomicReference<>();
-
         panel.addPropertyChangeListener("value", new PropertyChangeListener() {
             @Override
             public void propertyChange(PropertyChangeEvent evt) {
@@ -31,15 +29,16 @@ class QuickFrequencySelectorPanelTest {
             }
         });
 
-        // Use reflection or direct? Since private, we simulate by calling the listener logic indirectly.
-        // The addListener is private, buttons private. For unit test we can call fire directly? But private.
-        // Alternative: use the binder or accept that full button click requires UI.
-        // For now test via public API and known initial.
-        // To test firing, we can subclass or use the vetoable.
-
-        // Simpler: test that setting via the internal fire (but since we can't easily click, test the range binder instead)
-        // Just verify initial and that getValue works.
-        assertNotNull(panel.getValue());
+        javax.swing.JButton nfc = null;
+        for (java.awt.Component child : panel.getComponents()) {
+            if (child instanceof javax.swing.JButton && "NFC".equals(((javax.swing.JButton) child).getText())) {
+                nfc = (javax.swing.JButton) child;
+            }
+        }
+        assertNotNull(nfc);
+        nfc.doClick();
+        assertEquals("NFC", panel.getValue());
+        assertEquals("NFC", lastProperty.get());
     }
 
     @Test
