@@ -19,3 +19,4 @@ _None._
 |---|---|
 | [Unit test coverage](unit-test-coverage.md) | Done 2026-08-17. `make test` 104/104. Project **56.1%** lines, `core` **90.2%**. |
 | [Hardware integration tests](hardware-integration-tests.md) | Done 2026-08-17. Gated `make test-hw` (7 ITs, including `SpectrumSweepEngine` queue + dataset). `make test` stays radio-free. |
+| [Java 21 + FlatLaf UI](java-21-ui.md) | Done 2026-08-18. Java 21 floor, FlatDarkLaf, library bumps. `make test` 119/119, `make test-hw` 7/7. |

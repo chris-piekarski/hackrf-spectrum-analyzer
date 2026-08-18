@@ -1,6 +1,5 @@
 package jspectrumanalyzer.ui;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -33,7 +32,7 @@ public class FrequencySelectorPanel extends JPanel
 	 */
 	public FrequencySelectorPanel(int minValue, int maxValue, int step, int intialValue)
 	{
-		setBackground(Color.BLACK);
+		AnalyzerLookAndFeel.install();
 		this.minValue = minValue;
 		this.maxValue = maxValue;
 		this.step = step;
@@ -41,19 +40,15 @@ public class FrequencySelectorPanel extends JPanel
 		setLayout(new GridLayout(0, 4, 0, 0));
 
 		JButton button_plus4 = new JButton("+");
-		button_plus4.setBackground(Color.BLACK);
 		add(button_plus4);
 
 		JButton button_plus3 = new JButton("+");
-		button_plus3.setBackground(Color.BLACK);
 		add(button_plus3);
 
 		JButton button_plus2 = new JButton("+");
-		button_plus2.setBackground(Color.BLACK);
 		add(button_plus2);
 
 		JButton button_plus1 = new JButton("+");
-		button_plus1.setBackground(Color.BLACK);
 		add(button_plus1);
 
 		Font fontField = new Font(Font.MONOSPACED, Font.BOLD, 16);
@@ -92,19 +87,15 @@ public class FrequencySelectorPanel extends JPanel
 		textField_val1.setBorder(null);
 
 		JButton button_minus4 = new JButton("-");
-		button_minus4.setBackground(Color.BLACK);
 		add(button_minus4);
 
 		JButton button_minus3 = new JButton("-");
-		button_minus3.setBackground(Color.BLACK);
 		add(button_minus3);
 
 		JButton button_minus2 = new JButton("-");
-		button_minus2.setBackground(Color.BLACK);
 		add(button_minus2);
 
 		JButton button_minus1 = new JButton("-");
-		button_minus1.setBackground(Color.BLACK);
 		add(button_minus1);
 
 		button_plus1.addActionListener(addListener(true, 1));

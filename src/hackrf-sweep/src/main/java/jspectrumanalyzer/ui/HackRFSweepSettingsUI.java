@@ -1,10 +1,8 @@
 package jspectrumanalyzer.ui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Font;
-import java.awt.GridLayout;
 import java.beans.PropertyChangeEvent;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -13,7 +11,6 @@ import java.util.Vector;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.DefaultComboBoxModel;
@@ -38,8 +35,6 @@ import jspectrumanalyzer.core.HackRFSettings;
 import jspectrumanalyzer.core.HackRFSettings.HackRFEventAdapter;
 import net.miginfocom.swing.MigLayout;
 import shared.mvc.MVCController;
-import javax.swing.border.BevelBorder;
-import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -95,8 +90,7 @@ public class HackRFSweepSettingsUI extends JPanel
 	public HackRFSweepSettingsUI(HackRFSettings hackRFSettings)
 	{
 		this.hRF	= hackRFSettings;
-		setForeground(Color.WHITE);
-		setBackground(Color.BLACK);
+		AnalyzerLookAndFeel.install();
 		int minFreq = 1;
 		int maxFreq = 7250;
 		int freqStep = 1;
@@ -104,24 +98,20 @@ public class HackRFSweepSettingsUI extends JPanel
 		JPanel panelMainSettings	= new JPanel(new MigLayout("", "[123.00px,grow,leading]", "[][grow]"));
 
 		panelMainSettings.setBorder(new EmptyBorder(UIManager.getInsets("TabbedPane.tabAreaInsets")));;
-		panelMainSettings.setBackground(Color.BLACK);
 
 		JLabel lblQuickSelect = new JLabel("Quick Select");
-		lblQuickSelect.setForeground(Color.WHITE);
 		panelMainSettings.add(lblQuickSelect, "cell 0 0,alignx left,aligny center");
 
 		quickFrequencySelector = new QuickFrequencySelectorPanel();
 		panelMainSettings.add(quickFrequencySelector, "cell 0 1,growx,aligny center");
 
 		JLabel lblNewLabel = new JLabel("Frequency start [MHz]");
-		lblNewLabel.setForeground(Color.WHITE);
 		panelMainSettings.add(lblNewLabel, "cell 0 2,growx,aligny center");
 
 		frequencySelectorStart = new FrequencySelectorPanel(minFreq, maxFreq, freqStep, minFreq);
 		panelMainSettings.add(frequencySelectorStart, "cell 0 3,growx,aligny center");
 
 		JLabel lblFrequencyEndmhz = new JLabel("Frequency end [MHz]");
-		lblFrequencyEndmhz.setForeground(Color.WHITE);
 		panelMainSettings.add(lblFrequencyEndmhz, "cell 0 15,alignx left,aligny center");
 
 		frequencySelectorEnd = new FrequencySelectorPanel(minFreq, maxFreq, freqStep, maxFreq);
@@ -129,14 +119,11 @@ public class HackRFSweepSettingsUI extends JPanel
 		
 		txtHackrfConnected = new JLabel();
 		txtHackrfConnected.setText("HackRF disconnected");
-		txtHackrfConnected.setForeground(Color.WHITE);
-		txtHackrfConnected.setBackground(Color.BLACK);
 		panelMainSettings.add(txtHackrfConnected, "cell 0 24,growx");
 		txtHackrfConnected.setBorder(null);
 		
 		btnPause = new JButton("Pause");
 		panelMainSettings.add(btnPause, "cell 0 26,growx");
-		btnPause.setBackground(Color.black);
 
 		
 		
@@ -144,50 +131,33 @@ public class HackRFSweepSettingsUI extends JPanel
 		JTabbedPane tabbedPane	= new JTabbedPane(JTabbedPane.TOP);
 		setLayout(new BorderLayout());
 		add(panelMainSettings, BorderLayout.NORTH);
-		add(tabbedPane, BorderLayout.SOUTH);
-		tabbedPane.setForeground(Color.WHITE);
-		tabbedPane.setBackground(Color.BLACK);
+		add(tabbedPane, BorderLayout.CENTER);
 
 		JPanel tab1	= new JPanel(new MigLayout("", "[123.00px,grow,leading]", "[][][0][][][0][][][0][][][0][][][0][][0][][grow,fill]"));
-		tab1.setForeground(Color.WHITE);
-		tab1.setBackground(Color.BLACK);
 		
 		JPanel tab2	= new JPanel(new MigLayout("", "[123.00px,grow,leading]", "[][0][][][0][][][0][][0][][][0][][0][][][0][0][][][0][][0][grow,fill]"));
-		tab2.setForeground(Color.WHITE);
-		tab2.setBackground(Color.BLACK);
 		
 		tabbedPane.addTab("HackRF Settings", tab1);
 		tabbedPane.addTab("Chart options", tab2);
-		tabbedPane.setForegroundAt(1, Color.BLACK);
-		tabbedPane.setBackgroundAt(1, Color.WHITE);
 
-		tabbedPane.setForegroundAt(0, Color.BLACK);
-		tabbedPane.setBackgroundAt(0, Color.WHITE);
 		
 		JLabel lblNewLabel_2 = new JLabel("LNA Gain [dB]");
-		lblNewLabel_2.setForeground(Color.WHITE);
 		tab1.add(lblNewLabel_2, "cell 0 3");
 		
 		sliderGainLNA = new JSlider(SwingConstants.HORIZONTAL, 0, 100, 2);
-		sliderGainLNA.setForeground(Color.WHITE);
 		sliderGainLNA.setFont(new Font("Monospaced", Font.BOLD, 16));
-		sliderGainLNA.setBackground(Color.BLACK);
 		tab1.add(sliderGainLNA, "cell 0 4,growx");
 		
 		JLabel lblVgfaGaindb = new JLabel("VGA Gain [dB]");
-		lblVgfaGaindb.setForeground(Color.WHITE);
 		tab1.add(lblVgfaGaindb, "cell 0 6");
 		
 		sliderGainVGA = new JSlider(SwingConstants.HORIZONTAL, 0, 100, 2);
-		sliderGainVGA.setForeground(Color.WHITE);
 		sliderGainVGA.setFont(new Font("Monospaced", Font.BOLD, 16));
-		sliderGainVGA.setBackground(Color.BLACK);
 		tab1.add(sliderGainVGA, "cell 0 7,growx");
 
 		
 
 		JLabel lblFftBinhz = new JLabel("FFT Bin [Hz]");
-		lblFftBinhz.setForeground(Color.WHITE);
 		tab1.add(lblFftBinhz, "cell 0 9");
 
 		spinnerFFTBinHz = new JSpinner();
@@ -200,17 +170,13 @@ public class HackRFSweepSettingsUI extends JPanel
 		
 
 		JLabel lblGain = new JLabel("Gain [dB]");
-		lblGain.setForeground(Color.WHITE);
 		tab1.add(lblGain, "cell 0 0");
 
 		sliderGain = new JSlider(JSlider.HORIZONTAL, 0, 100, 2);
 		sliderGain.setFont(new Font("Monospaced", Font.BOLD, 16));
-		sliderGain.setBackground(Color.BLACK);
-		sliderGain.setForeground(Color.WHITE);
 		tab1.add(sliderGain, "flowy,cell 0 1,growx");
 
 		JLabel lbl_gainValue = new JLabel(hRF == null ? "0" : hRF.getGain() + "dB");
-		lbl_gainValue.setForeground(Color.WHITE);
 		tab1.add(lbl_gainValue, "cell 0 1,alignx right");
 
 		if (hRF != null) {
@@ -220,7 +186,6 @@ public class HackRFSweepSettingsUI extends JPanel
 		
 
 		JLabel lblNumberOfSamples = new JLabel("Number of samples");
-		lblNumberOfSamples.setForeground(Color.WHITE);
 		tab1.add(lblNumberOfSamples, "cell 0 12");
 
 		spinner_numberOfSamples = new JSpinner();
@@ -245,47 +210,34 @@ public class HackRFSweepSettingsUI extends JPanel
 		
 		JLabel labelVersion = new JLabel("Version: "+Version.version);
 		tab1.add(labelVersion, "flowx,cell 0 17");
-		btnAbout.setBackground(Color.BLACK);
 		tab1.add(btnAbout, "cell 0 17,alignx right");
 		
 		JLabel lblAntennaPower = new JLabel("Antenna power");
-		lblAntennaPower.setForeground(Color.WHITE);
 		tab1.add(lblAntennaPower, "flowx,cell 0 15,growx");
 		
 		chckbxAntennaPower = new JCheckBox("");
 		chckbxAntennaPower.setHorizontalTextPosition(SwingConstants.LEADING);
-		chckbxAntennaPower.setBackground(Color.BLACK);
-		chckbxAntennaPower.setForeground(Color.WHITE);
 		tab1.add(chckbxAntennaPower, "cell 0 15,alignx right");
 
 		JLabel lblLNAEnable = new JLabel("Antenna LNA +14dB");
-		lblLNAEnable.setForeground(Color.WHITE);
 		tab1.add(lblLNAEnable, "flowx,cell 0 16,growx");
 
 		chckbxAntennaLNA = new JCheckBox("");
 		chckbxAntennaLNA.setHorizontalTextPosition(SwingConstants.LEADING);
-		chckbxAntennaLNA.setBackground(Color.BLACK);
-		chckbxAntennaLNA.setForeground(Color.WHITE);
 		tab1.add(chckbxAntennaLNA, "cell 0 16,alignx right");
 		
 		chckbxFilterSpectrum = new JCheckBox("Filter spectrum");
-		chckbxFilterSpectrum.setBackground(Color.BLACK);
-		chckbxFilterSpectrum.setForeground(Color.WHITE);
 		
 		JLabel lblWaterfallEnabled = new JLabel("Waterfall enabled");
-		lblWaterfallEnabled.setForeground(Color.WHITE);
 		tab2.add(lblWaterfallEnabled, "flowx,cell 0 0,growx");
 
 		
 
 
 		JLabel lblWaterfallPaletteStart = new JLabel("Waterfall palette start [dB]");
-		lblWaterfallPaletteStart.setForeground(Color.WHITE);
 		tab2.add(lblWaterfallPaletteStart, "cell 0 2");
 
 		slider_waterfallPaletteStart = new JSlider();
-		slider_waterfallPaletteStart.setForeground(Color.WHITE);
-		slider_waterfallPaletteStart.setBackground(Color.BLACK);
 		slider_waterfallPaletteStart.setMinimum(-100);
 		slider_waterfallPaletteStart.setMaximum(0);
 		slider_waterfallPaletteStart.setValue(-30);
@@ -293,39 +245,28 @@ public class HackRFSweepSettingsUI extends JPanel
 
 
 		JLabel lblWaterfallPaletteLength = new JLabel("Waterfall palette length [dB]");
-		lblWaterfallPaletteLength.setForeground(Color.WHITE);
 		tab2.add(lblWaterfallPaletteLength, "cell 0 5");
 
 		slider_waterfallPaletteSize = new JSlider(HackRFSweepSpectrumAnalyzer.SPECTRUM_PALETTE_SIZE_MIN, 100);
-		slider_waterfallPaletteSize.setBackground(Color.BLACK);
-		slider_waterfallPaletteSize.setForeground(Color.WHITE);
 		tab2.add(slider_waterfallPaletteSize, "cell 0 6,growx");
 		
 		JLabel lblSpectrLineThickness = new JLabel("Spectr. Line Thickness");
-		lblSpectrLineThickness.setForeground(Color.WHITE);
 		tab2.add(lblSpectrLineThickness, "flowx,cell 0 8,growx");
 		
 		JLabel lblShowPeaks = new JLabel("Show peaks");
-		lblShowPeaks.setForeground(Color.WHITE);
 		tab2.add(lblShowPeaks, "flowx,cell 0 10,growx");
 		
 		
 		chckbxShowPeaks = new JCheckBox("");
-		chckbxShowPeaks.setForeground(Color.WHITE);
-		chckbxShowPeaks.setBackground(Color.BLACK);
 		tab2.add(chckbxShowPeaks, "cell 0 10,alignx right");
 		
 		JLabel lblSpurFiltermay = new JLabel("Spur filter (may distort real signals)");
-		lblSpurFiltermay.setForeground(Color.WHITE);
 		tab2.add(lblSpurFiltermay, "flowx,cell 0 13,growx");
 		
 		chckbxRemoveSpurs = new JCheckBox("");
-		chckbxRemoveSpurs.setForeground(Color.WHITE);
-		chckbxRemoveSpurs.setBackground(Color.BLACK);
 		tab2.add(chckbxRemoveSpurs, "cell 0 13,alignx right");
 		
 		lblPeakFall = new JLabel("  Fall speed [s]");
-		lblPeakFall.setForeground(Color.WHITE);
 		tab2.add(lblPeakFall, "flowx,cell 0 11,growx");
 		
 		spinnerPeakFallSpeed = new JSpinner();
@@ -333,15 +274,12 @@ public class HackRFSweepSettingsUI extends JPanel
 		tab2.add(spinnerPeakFallSpeed, "cell 0 11,alignx right");
 		
 		lblPersistentDisplay = new JLabel("Persistent Display");
-		lblPersistentDisplay.setForeground(Color.WHITE);
 		tab2.add(lblPersistentDisplay, "flowx,cell 0 15,growx");
 		
 		lblDecayRate = new JLabel("  Persistence time [s]");
-		lblDecayRate.setForeground(Color.WHITE);
 		tab2.add(lblDecayRate, "flowx,cell 0 16,growx");
 		
 		JLabel lblDisplayFrequencyAllocation = new JLabel("Frequency Allocation Bands");
-		lblDisplayFrequencyAllocation.setForeground(Color.WHITE);
 		tab2.add(lblDisplayFrequencyAllocation, "cell 0 19");
 		
 		
@@ -359,13 +297,9 @@ public class HackRFSweepSettingsUI extends JPanel
 		tab2.add(comboBoxLineThickness, "cell 0 8,alignx right");
 		
 		checkBoxPersistentDisplay = new JCheckBox("");
-		checkBoxPersistentDisplay.setForeground(Color.WHITE);
-		checkBoxPersistentDisplay.setBackground(Color.BLACK);
 		tab2.add(checkBoxPersistentDisplay, "cell 0 15,alignx right");
 		
 		checkBoxWaterfallEnabled = new JCheckBox("");
-		checkBoxWaterfallEnabled.setForeground(Color.WHITE);
-		checkBoxWaterfallEnabled.setBackground(Color.BLACK);
 		tab2.add(checkBoxWaterfallEnabled, "cell 0 0,alignx right");
 		
 		comboBoxDecayRate = new JComboBox(
@@ -374,12 +308,9 @@ public class HackRFSweepSettingsUI extends JPanel
 		tab2.add(comboBoxDecayRate, "cell 0 16,alignx right");
 		
 		lblDebugDisplay = new JLabel("Debug display");
-		lblDebugDisplay.setForeground(Color.WHITE);
 		tab2.add(lblDebugDisplay, "flowx,cell 0 22,growx");
 		
 		checkBoxDebugDisplay = new JCheckBox("");
-		checkBoxDebugDisplay.setForeground(Color.WHITE);
-		checkBoxDebugDisplay.setBackground(Color.BLACK);
 		tab2.add(checkBoxDebugDisplay, "cell 0 22,alignx right");
 		
 		

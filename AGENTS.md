@@ -7,7 +7,7 @@ This document provides guidance for AI coding agents (and human contributors) wo
 This is a Java desktop spectrum analyzer GUI optimized for the HackRF One SDR (USB device). It wraps the `hackrf_sweep` tool as a native shared library (via JNA) for high-performance wideband sweeps.
 
 Key technologies:
-- Java 8+ (Swing UI + JFreeChart for plots)
+- Java 21+ (Swing UI + FlatLaf + JFreeChart for plots)
 - Native C (hackrf library v2026.01.3 + custom sweep-as-library patch)
 - Maven for Java build
 - Custom Makefile for cross-platform native + Java packaging (Linux + Windows)
@@ -130,7 +130,7 @@ GitHub's "ahead/behind" count vs `pavsa/hackrf-spectrum-analyzer` is misleading:
 - Full end-to-end testing requires a real HackRF One + proper udev permissions.
 - The native build is Linux-only for cross-compilation (mingw).
 - Some UI components are still difficult to unit test (Swing-heavy). Focus unit tests on `core/` logic.
-- JNA bridge regeneration (`jnabridge`) requires OpenJDK 8.
+- `HackrfSweepLibrary` is hand-maintained (`make jnabridge` does not run JNAerator). The UI requires a **headful** JDK 21+.
 
 ## Questions?
 

@@ -17,7 +17,7 @@ This guide will get you up and running with the HackRF Spectrum Analyzer GUI.
 - Recommended firmware: **v2024.02.1** or newer (host SDK is pinned to **v2026.01.3**)
 
 ### Software
-- Java (OpenJDK 8 or later recommended)
+- Java 21+ (headful OpenJDK / Temurin, not a headless JRE)
 - For building from source (recommended for Linux):
   - Maven
   - GCC toolchain + mingw-w64 (for cross-compiling Windows natives)

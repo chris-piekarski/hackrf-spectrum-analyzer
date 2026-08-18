@@ -108,7 +108,7 @@ This repo is a GitHub fork of [pavsa/hackrf-spectrum-analyzer](https://github.co
 
 Do **not** rebase this fork onto `upstream/master` or merge with a default recursive strategy — that would fight the Maven layout, tests, docs, and Quick Select work.
 
-The 2024 upstream release (`v2024.11.10`) is already absorbed: Antenna LNA, Maven dependencies (JFreeChart 1.5 / JNA 5.15 / MigLayout 11), min FFT bin size, and the JFreeChart 1.5 renderer API. The hackrf submodule + sweep-as-library patch is pinned to **v2026.01.3**.
+The 2024 upstream release (`v2024.11.10`) is already absorbed: Antenna LNA, min FFT bin size, and the JFreeChart 1.5 renderer API. Host SDK is **v2026.01.3**. The Java UI targets **Java 21** with FlatLaf, JFreeChart 1.5.6, JNA 5.19.1, and MigLayout 11.4.3.
 
 To inspect future upstream changes:
 

@@ -22,7 +22,7 @@ On Windows the equivalent `.cmd` launcher is provided.
 flowchart LR
     HW[HackRF USB] --> Native[Native Sweep Library]
     Native --> Java[Java Core DSP]
-    Java --> UI[Swing UI<br/>Spectrum + Waterfall]
+    Java --> UI[Swing + FlatLaf<br/>Spectrum + Waterfall]
     UI --> User[User]
     User --> UI
     UI --> Controls[Quick Select, Gains,<br/>LNA, Spur Filter]

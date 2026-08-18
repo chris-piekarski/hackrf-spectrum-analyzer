@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced `src/hackrf-sweep/Makefile` with matching help and quality targets
 
 ### Changed
+- Java **8 → 21** (`--release 21`). FlatLaf 3.7.2 dark look-and-feel. JFreeChart 1.5.6, MigLayout 11.4.3, JNA 5.19.1, JUnit 5.13.4, JaCoCo 0.8.15. Launchers refuse older or headless JREs. `HackrfSweepLibrary` is hand-maintained (`make jnabridge` no longer runs JNAerator).
 - Host libhackrf / SDK pin **v2024.02.1 → v2026.01.3** (USB API 1.16). Sweep-as-library patch rebased (`num_fft_bins`, `stdbool.h`). JNA ABI unchanged. `isKnownHackrfBoard` accepts HackRF Pro (board id 5). Min firmware remains 2024.02.1.
 - Modernized build (Maven + cross-platform native)
 - Brought in upstream improvements (Antenna LNA support, firmware v2024.02.1, min FFT bin fix, etc.)

@@ -1,6 +1,5 @@
 package jspectrumanalyzer.ui;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -28,53 +27,42 @@ public class QuickFrequencySelectorPanel extends JPanel
 	 */
 	public QuickFrequencySelectorPanel()
 	{
-		setBackground(Color.BLACK);
+		AnalyzerLookAndFeel.install();
 
 		setLayout(new GridLayout(4, 3, 0, 0));
 
 		JButton button_wifi2 = new JButton("WiFi 2");
-		button_wifi2.setBackground(Color.BLACK);
 		add(button_wifi2);
 
 		JButton button_wifi5 = new JButton("WiFi 5");
-		button_wifi5.setBackground(Color.BLACK);
 		add(button_wifi5);
 
 		JButton button_lte = new JButton("LTE-1");
-		button_lte.setBackground(Color.BLACK);
 		add(button_lte);
 
 		JButton button_lte2 = new JButton("LTE-2");
-		button_lte2.setBackground(Color.BLACK);
 		add(button_lte2);
 
 
 		JButton button_nfc = new JButton("NFC");
-		button_nfc.setBackground(Color.BLACK);
 		add(button_nfc);
 
 		JButton button_fm = new JButton("FM");
-		button_fm.setBackground(Color.BLACK);
 		add(button_fm);
 
 		JButton button_hf = new JButton("HF");
-		button_hf.setBackground(Color.BLACK);
 		add(button_hf);
 
 		JButton button_vhf = new JButton("VHF");
-		button_vhf.setBackground(Color.BLACK);
 		add(button_vhf);
 
 		JButton button_uhf = new JButton("UHF");
-		button_uhf.setBackground(Color.BLACK);
 		add(button_uhf);
 
 		JButton button_vtv = new JButton("V-TV");
-		button_vtv.setBackground(Color.BLACK);
 		add(button_vtv);
 
 		JButton button_utv = new JButton("U-TV");
-		button_utv.setBackground(Color.BLACK);
 		add(button_utv);
 
 

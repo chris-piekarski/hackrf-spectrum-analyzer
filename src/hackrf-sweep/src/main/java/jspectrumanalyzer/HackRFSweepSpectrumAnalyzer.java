@@ -7,7 +7,6 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Graphics2D;
-import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -34,7 +33,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -115,6 +113,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		}
 		//		try { Thread.sleep(20000); System.out.println("Started..."); } catch (InterruptedException e) {}
 
+		jspectrumanalyzer.ui.AnalyzerLookAndFeel.install();
 		new HackRFSweepSpectrumAnalyzer();
 	}
 
@@ -207,6 +206,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private JLabel labelMessages;
 
 	public HackRFSweepSpectrumAnalyzer() {
+		jspectrumanalyzer.ui.AnalyzerLookAndFeel.install();
 		printInit(0);
 
 		if (captureGIF) {
@@ -220,35 +220,6 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		}
 
 		recalculateGains(parameterGainTotal.getValue());
-
-		try {
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		} catch (Exception e1) {
-			e1.printStackTrace();
-		}
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.borderHightlightColor", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.background", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.contentAreaColor", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.darkShadow", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.focus", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.highlight", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.light", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.selected", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.selectedForeground", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.selectHighlight", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.shadow", Color.black);
-		//		UIManager.getLookAndFeelDefaults().put("TabbedPane.tabAreaBackground", Color.black);
-
-		Insets insets = new Insets(1, 1, 1, 1);
-		UIManager.getLookAndFeelDefaults().put("TabbedPane.contentBorderInsets", insets);
-		UIManager.getLookAndFeelDefaults().put("TabbedPane.selectedTabPadInsets", insets);
-		UIManager.getLookAndFeelDefaults().put("TabbedPane.tabAreaInsets", insets);
-		//		UIManager.getLookAndFeelDefaults().put("", insets);
-		//		UIManager.getLookAndFeelDefaults().put("", insets);
-
-		//		UIManager.getLookAndFeelDefaults().values().forEach((p) -> {
-		//			System.out.println(p.toString());
-		//		});
 
 		setupChart();
 
@@ -275,7 +246,6 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		splitPane.setBorder(null);
 
 		labelMessages = new JLabel("dsadasd");
-		labelMessages.setForeground(Color.white);
 		labelMessages.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
 		parameterDebugDisplay.addListener((debug) -> {
 			labelMessages.setVisible(debug);
@@ -283,7 +253,6 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		parameterDebugDisplay.callObservers();
 		
 		JPanel splitPanePanel	= new JPanel(new BorderLayout());
-		splitPanePanel.setBackground(Color.black);
 		splitPanePanel.add(splitPane, BorderLayout.CENTER);
 		splitPanePanel.add(labelMessages, BorderLayout.SOUTH);
 

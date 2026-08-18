@@ -41,12 +41,12 @@ deps: ## Install all build and runtime dependencies (Ubuntu/Debian - recommended
 		libusb-1.0-0-dev \
 		libfftw3-dev \
 		libfftw3-bin \
-		default-jdk \
+		openjdk-21-jdk \
 		mingw-w64
 
 runtime-deps: ## Install only what's needed to run (after a build)
 	sudo apt update
-	sudo apt install -y default-jdk libusb-1.0-0 libfftw3-bin
+	sudo apt install -y openjdk-21-jdk libusb-1.0-0 libfftw3-bin
 
 ##@ Build
 build: ## Build the full application (jar + natives + zip). Delegates to subdir.

@@ -37,7 +37,7 @@ sudo apt install \
   libusb-1.0-0-dev \
   libfftw3-dev \
   libfftw3-bin \
-  default-jdk \
+  openjdk-21-jdk \
   mingw-w64
 ```
 
@@ -66,7 +66,7 @@ You will also need the HackRF sources (handled automatically by the build via su
 Run `make help` inside this directory for advanced / low-level targets:
 
 - `all` (default)
-- `jnabridge` — regenerate JNA bindings (needs JDK 8)
+- `jnabridge` — no-op; `HackrfSweepLibrary.java` is hand-maintained
 - `patch_hackrf` — re-apply the library-mode patch
 - `clean`, `prepare`, etc.
 
@@ -86,7 +86,8 @@ After a successful build you will find:
 ## Troubleshooting Builds
 
 - Missing `mingw-w64` → Windows DLLs won't build.
-- Wrong JDK version for `jnabridge` → JNAerator is picky (needs Java 8).
+- UI fails with a headless JRE → install `openjdk-21-jdk` (not `-headless`).
+- Java older than 21 → the launcher prints the required version and exits.
 - Submodule not initialized → run `git submodule update --init --recursive`.
 - Permission issues on Linux → see [hackrf-setup.md](hackrf-setup.md) for udev rules (also needed at runtime).
 

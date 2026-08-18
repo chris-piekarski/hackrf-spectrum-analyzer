@@ -1,6 +1,6 @@
 # This will build windows and linux versions of required native libraries 
 # The following utilities have to be installed (tested on ubuntu 18.04):
-# build-essential ant git libusb-1.0 libfftw3-dev libfftw3-bin mingw-w64 openjdk-8 libfftw3-bin libusb-1.0  
+# build-essential ant git libusb-1.0 libfftw3-dev libfftw3-bin mingw-w64 openjdk-21-jdk libfftw3-bin libusb-1.0  
 
 # Use 'make help' for a colorful categorized list of targets.
 
@@ -95,7 +95,7 @@ LDFLAGS_WIN+= -Wl,--kill-at  -static-libgcc -static-libstdc++ -shared
 
 # Linux build setup
 ANT_PATH= ""
-#required installed libraries for linux: openjdk-8 or newer, libfftw3, libusb-1.0 
+#required installed libraries for linux: openjdk-21 (headful), libfftw3, libusb-1.0 
 JDK_EXECUTABLE= java #required to generate jna wrapper
 DLL_LIB= $(OUTPUT_DLL_DIR)/libhackrf-sweep.so
 LDLIBS= -lusb-1.0 -lfftw3 -lfftw3f
@@ -146,14 +146,11 @@ prepare: dirs $(OBJECTS) $(OBJECTS_WIN) $(DLL_LIB_FFTW) ## (internal) prepare ou
 	chmod +x $(OUTPUT_PATH)/../hackrf_sweep_spectrum_analyzer_linux.sh #linux launcher at build/ root for convenience after make
 	cp -f $(DLL_LIB_FFTW) $(DLL_LIB_PTHREAD) $(DLL_LIB_USB) $(OUTPUT_DLL_DIR_WIN)
 
-# if native header in hackrf lib changes, rebuild with "make jnabridge" - but openjdk-8 is required - jnaerator does not work with jdk9+
+# HackrfSweepLibrary.java is hand-maintained (see src-c/hackrf_sweep.h). JNAerator is not used.
 .PHONY: jnabridge
-jnabridge: $(JNA_SWEEP_HEADER) ## Re-generate JNA Java bindings from native header (needs JDK8)
-	$(JDK_EXECUTABLE) -Xmx1024M -jar $(JNAERATOR) -limitComments -emptyStructsAsForwardDecls -f  -skipLibraryInstance -runtime JNA -direct  -mode Jar -o lib -jar $(JNA_LIB) -v -library "hackrf-sweep" $(JNA_SWEEP_HEADER)
-	unzip -p lib/hackrf-sweep-jna.jar hackrfsweep/HackrfSweepLibrary.java  > src/main/java/hackrfsweep/HackrfSweepLibrary.java
-	rm lib/hackrf-sweep-jna.jar
-	#$(JDK_EXECUTABLE) -Xmx1024M -jar $(JNAERATOR) -limitComments -emptyStructsAsForwardDecls -f  -skipLibraryInstance -runtime JNA -direct  -mode Jar -o lib -jar libhackrf-jna.jar -v -library "hackrf-sweep"  $(CURDIR)/lib/hackrf/host/libhackrf/src/hackrf.h
-	rm -rf $(CURDIR)/_jnaerator.*
+jnabridge: ## JNA wrapper is source-controlled; does not run JNAerator
+	@echo "hackrfsweep/HackrfSweepLibrary.java is hand-maintained."
+	@echo "Edit it to match src-c/hackrf_sweep.h; do not run JNAerator."
 
 ##@ Native Libraries
 $(DLL_LIB_WIN): $(OBJECTS_WIN) 
