@@ -31,9 +31,9 @@ flowchart TD
 These are the best candidates for unit testing (and have the majority of our test coverage).
 
 ### Native Integration
-- `src-c/0001-...patch` — Turns the upstream `hackrf_sweep` tool into a reusable library.
+- `src-c/0001-hackrf_sweep-to-library-conversion-v2026.01.3.patch` — Turns the upstream `hackrf_sweep` tool into a reusable library.
 - `HackRFSweepNativeBridge.java` + generated `HackrfSweepLibrary.java`
-- The build process automatically checks out the correct hackrf version and applies the patch.
+- The build process resets the hackrf submodule to `HACKRF_SDK_PIN` (v2026.01.3) and applies the patch.
 
 ### UI Layer
 - Traditional Swing + JFreeChart.

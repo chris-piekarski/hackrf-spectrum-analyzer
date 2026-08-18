@@ -8,7 +8,7 @@ This is a Java desktop spectrum analyzer GUI optimized for the HackRF One SDR (U
 
 Key technologies:
 - Java 8+ (Swing UI + JFreeChart for plots)
-- Native C (hackrf library + custom sweep-as-library patch)
+- Native C (hackrf library v2026.01.3 + custom sweep-as-library patch)
 - Maven for Java build
 - Custom Makefile for cross-platform native + Java packaging (Linux + Windows)
 - Supports real-time spectrum, waterfall, peak/persistent display, spur filter, frequency allocations, quick band selectors, and Antenna LNA (+14 dB) control.
@@ -34,6 +34,7 @@ This shows all available targets with descriptions and categories (colorized).
 - `make test-hw` — Hardware ITs (`*IT`, `@Tag("hardware")`): USB, firmware/USB API/board, `SpectrumSweepEngine` queue + dataset, start/stop/restart, LNA + antenna-power, FFT/freq restart. Skips if no radio.
 - `make info` — List attached HackRF devices, the SDK/USB API this app is pinned to, and whether a newer GSG firmware/libhackrf exists. Alias: `make list-devices`
 - `make firmware-update` — Dry-run official GSG SPI flash. Write only with `CONFIRM=1` (optional `VERSION=2026.01.3`). Not part of `build` / `test`.
+- `make udev` — Install persistent udev rules (sudo once) so WSL usbipd nodes stay writable.
 - `make lint` — Compile/lint checks
 - `make start` — Build (if needed) + launch the Linux app
 - `make clean` — Clean build artifacts
@@ -60,7 +61,7 @@ See [docs/building.md](docs/building.md) for full instructions, including requir
 
 Native build requires:
 - Linux host with mingw-w64 for Windows cross-compilation
-- Specific versions of hackrf sources (patched automatically)
+- hackrf submodule pinned to `HACKRF_SDK_PIN` (v2026.01.3) and patched automatically (`src-c/0001-hackrf_sweep-to-library-conversion-v2026.01.3.patch`)
 
 ## Documentation
 

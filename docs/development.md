@@ -34,7 +34,7 @@ cd src/hackrf-sweep && mvn clean test
 
 `make test` must stay green and **never** requires a HackRF. Hardware/integration tests live in `jspectrumanalyzer.hw`, are named `*IT`, and each method is marked `@HardwareTest` (`@Tag("hardware")` + `@Test`). Surefire excludes that tag and `*IT`. Run them only with `make test-hw` (skips if the radio is not enumerated). That profile covers USB presence, firmware/USB API/board via the app’s `.so`, a live sweep through `FFTBins` → `DatasetSpectrumPeak`, start/stop/restart, antenna power + LNA, and restart after FFT bin / frequency change. See [plans/hardware-integration-tests.md](plans/hardware-integration-tests.md).
 
-`make info` (alias `make list-devices`) prints the SDK/USB API this tree is pinned to (libhackrf `v2024.02.1`, USB API from the firmware sources, JNA), attached HackRF USB devices, device firmware when the usbfs node is writable, and whether a newer Great Scott Gadgets release exists (GitHub; skip with `HACKRF_INFO_NO_NET=1`).
+`make info` (alias `make list-devices`) prints the SDK/USB API this tree is pinned to (libhackrf `v2026.01.3`, USB API from the firmware sources, JNA), attached HackRF USB devices, device firmware when the usbfs node is writable, and whether a newer Great Scott Gadgets release exists (GitHub; skip with `HACKRF_INFO_NO_NET=1`).
 
 `make firmware-update` is a **dry-run** of an official GSG SPI-flash. It only writes with `CONFIRM=1`. It is not part of `make build` or `make test`. See [hackrf-setup.md](hackrf-setup.md).
 
@@ -108,7 +108,7 @@ This repo is a GitHub fork of [pavsa/hackrf-spectrum-analyzer](https://github.co
 
 Do **not** rebase this fork onto `upstream/master` or merge with a default recursive strategy — that would fight the Maven layout, tests, docs, and Quick Select work.
 
-The 2024 upstream release (`v2024.11.10`) is already absorbed: Antenna LNA, hackrf `v2024.02.1` submodule + patch, Maven dependencies (JFreeChart 1.5 / JNA 5.15 / MigLayout 11), min FFT bin size, and the JFreeChart 1.5 renderer API.
+The 2024 upstream release (`v2024.11.10`) is already absorbed: Antenna LNA, Maven dependencies (JFreeChart 1.5 / JNA 5.15 / MigLayout 11), min FFT bin size, and the JFreeChart 1.5 renderer API. The hackrf submodule + sweep-as-library patch is pinned to **v2026.01.3**.
 
 To inspect future upstream changes:
 

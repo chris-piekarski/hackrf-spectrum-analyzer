@@ -62,7 +62,7 @@ All detailed documentation lives under the `docs/` directory:
 
 ## Requirements
 
-- HackRF One with firmware **v2024.02.1** or newer (strongly recommended)
+- HackRF One with firmware **v2024.02.1** or newer (strongly recommended; host SDK is **v2026.01.3**)
 - Java 8+
 
 For building you will also need Maven and a C toolchain (see [building.md](docs/building.md)).

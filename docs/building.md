@@ -56,6 +56,7 @@ You will also need the HackRF sources (handled automatically by the build via su
 | `info`          | HackRF USB, app SDK/API, firmware updates |
 | `list-devices`  | Alias for `info`                    |
 | `firmware-update` | Official GSG flash (dry-run; `CONFIRM=1` writes) |
+| `udev`            | Install persistent HackRF udev rules (sudo) |
 | `lint`          | Maven compile check                 |
 | `start`         | Launch the Linux app                |
 | `run`           | Alias for `start`                   |
@@ -79,7 +80,7 @@ After a successful build you will find:
 ## Cross-Compilation Notes
 
 - Linux build produces both the Linux `.so` **and** the Windows `.dll` (using mingw-w64).
-- The hackrf submodule is automatically reset to v2024.02.1 and patched during build.
+- The hackrf submodule is automatically reset to v2026.01.3 and patched during build (`HACKRF_SDK_PIN` in `src/hackrf-sweep/Makefile`).
 - The Java fat JAR is built with Maven (assembly plugin).
 
 ## Troubleshooting Builds

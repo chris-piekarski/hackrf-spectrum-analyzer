@@ -54,7 +54,10 @@ OBJECT_SUFFIX_WIN= ow
 OBJECTS= $(addsuffix .$(OBJECT_SUFFIX), $(addprefix $(BUILD_PATH)/, $(SOURCES)))
 OBJECTS_WIN= $(addsuffix .$(OBJECT_SUFFIX_WIN), $(addprefix $(BUILD_PATH)/, $(SOURCES)))
 
-CFLAGS= -DHACKRF_SWEEP_AS_LIBRARY -c -fPIC
+HACKRF_SDK_PIN= v2026.01.3
+HACKRF_SWEEP_PATCH= src-c/0001-hackrf_sweep-to-library-conversion-v2026.01.3.patch
+CFLAGS= -DHACKRF_SWEEP_AS_LIBRARY -c -fPIC \
+	-DLIBRARY_VERSION=\"$(HACKRF_SDK_PIN)\" -DLIBRARY_RELEASE=\"$(HACKRF_SDK_PIN)\"
 LDFLAGS=  -shared 
 CFLAGS_WIN= $(CFLAGS)
 
@@ -127,9 +130,9 @@ zip_file: $(DLL_LIB) $(DLL_LIB_WIN) ## (internal) create release zip
 	yes | cp -rf $(ZIP_FILE_PATH)/$(ZIP_FILE) $(RELEASE_DIR) 
 
 .PHONY: patch_hackrf
-patch_hackrf: ## Re-checkout and patch hackrf sources to library mode for v2024
+patch_hackrf: ## Re-checkout and patch hackrf sources to library mode for v2026.01.3
 	# format the src # clang-format --style=file:../../../.clang-format -i hackrf_sweep.c
-	(cd lib/hackrf/ && git reset --hard v2024.02.1 && git apply < ../../src-c/0001-hackrf_sweep-to-library-conversion-v2024.02.1.patch)
+	(cd lib/hackrf/ && git reset --hard $(HACKRF_SDK_PIN) && git apply < ../../$(HACKRF_SWEEP_PATCH))
 
 .PHONY: prepare
 prepare: dirs $(OBJECTS) $(OBJECTS_WIN) $(DLL_LIB_FFTW) ## (internal) prepare output dirs, objects, assets, launchers
@@ -189,7 +192,7 @@ lint: ## Run compile/lint checks via Maven (basic quality gate)
 	mvn clean compile
 
 ##@ Hardware
-.PHONY: info list-devices firmware-update
+.PHONY: info list-devices firmware-update udev
 info: ## List HackRF devices, app SDK/API versions, and upstream updates
 	@$(abspath $(CURDIR)/../../scripts/hackrf-info.sh)
 
@@ -198,6 +201,9 @@ list-devices: info ## Alias for info
 firmware-update: ## Flash official GSG firmware (dry-run; CONFIRM=1 to write)
 	@CONFIRM=$(CONFIRM) VERSION=$(VERSION) FIRMWARE=$(FIRMWARE) SERIAL=$(SERIAL) \
 		$(abspath $(CURDIR)/../../scripts/hackrf-firmware-update.sh)
+
+udev: ## Install persistent udev rules (sudo once)
+	@$(abspath $(CURDIR)/../../scripts/hackrf-udev-install.sh)
 
 ##@ Run & Dev
 start: build ## Build (if needed) then start the Linux app (assumes build artifacts present)

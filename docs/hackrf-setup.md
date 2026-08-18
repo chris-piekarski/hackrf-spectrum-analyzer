@@ -2,7 +2,7 @@
 
 ```mermaid
 flowchart TD
-    A[Update Firmware<br/>v2024.02.1+] --> B{OS?}
+    A[Update Firmware<br/>v2024.02.1+ / 2026.01.3] --> B{OS?}
     B -->|Linux| C[Install udev rules<br/>plugdev group]
     B -->|Windows| D[Run Zadig<br/>WinUSB driver]
     C --> E[Verify with hackrf_info]
@@ -14,7 +14,7 @@ Proper USB permissions and firmware are critical for reliable operation.
 
 ## Firmware
 
-**Minimum recommended**: v2024.02.1
+**Minimum**: v2024.02.1. **Matches this app's host SDK**: v2026.01.3 (GSG's current release).
 
 From this repo (HackRF One attached, usbfs writable):
 
@@ -35,22 +35,15 @@ It is often easiest to perform the update from a Linux virtual machine.
 
 The hackrf library will not be able to open the device by default on most distributions.
 
-Create a udev rule:
+Install the rule from this repo (once; needs sudo):
 
 ```bash
-sudo tee /etc/udev/rules.d/53-hackrf.rules << 'EOF'
-# HackRF One
-ATTR{idVendor}=="1d50", ATTR{idProduct}=="6089", MODE="0666", GROUP="plugdev"
-# Other HackRF products if needed
-ATTR{idVendor}=="1d50", ATTR{idProduct}=="604b", MODE="0666", GROUP="plugdev"
-ATTR{idVendor}=="1d50", ATTR{idProduct}=="6089", MODE="0666", GROUP="plugdev"
-EOF
-
-sudo udevadm control --reload-rules
-sudo udevadm trigger
+make udev
 ```
 
-Add your user to the `plugdev` group (or the group used in the rule):
+That copies `scripts/53-hackrf.rules` to `/etc/udev/rules.d/` (`MODE=0666`, `GROUP=plugdev`) and reloads udev. After that, a new attach/replug should come up writable without `chmod`.
+
+Add your user to the `plugdev` group if you are not already:
 
 ```bash
 sudo usermod -a -G plugdev $USER
@@ -69,21 +62,36 @@ You should see your device without permission errors. `make info` still lists th
 
 ## WSL2 (Windows host, Linux build)
 
-Windows does not share USB with WSL2 until you attach the device:
+Windows does not share USB with WSL2 until you attach the device.
+
+**Once (Administrator PowerShell):**
 
 ```powershell
 usbipd list
-usbipd bind --busid <BUSID>          # once, as Administrator
-usbipd attach --wsl --busid <BUSID>  # after each unplug/reboot
+usbipd bind --busid <BUSID>          # persist "Shared" across reboots
 ```
 
-HackRF One is `1d50:6089`. In WSL, `lsusb` should then show Great Scott Gadgets HackRF One.
+**Each Windows logon / after the radio resets** — leave this running to re-attach automatically:
 
-usbipd device nodes are often `root:root` and not writable. Either add the udev rule below or:
+```powershell
+usbipd attach --wsl --auto-attach --hardware-id 1d50:6089
+```
+
+`--hardware-id` survives bus-id changes. `--auto-attach` re-binds after firmware reset or unplug. `bind` alone does not attach.
+
+**Once in WSL** (this distro already has `systemd=true` in `/etc/wsl.conf`):
+
+```bash
+make udev    # persistent usbfs MODE=0666; no more chmod after each attach
+```
+
+Until `make udev` has been run, usbipd nodes are often `root:root` and need:
 
 ```bash
 sudo chmod a+rw /dev/bus/usb/00X/00Y
 ```
+
+HackRF One is `1d50:6089`. In WSL, `lsusb` should then show Great Scott Gadgets HackRF One.
 
 List the radio and run hardware smoke tests (not part of `make test`):
 

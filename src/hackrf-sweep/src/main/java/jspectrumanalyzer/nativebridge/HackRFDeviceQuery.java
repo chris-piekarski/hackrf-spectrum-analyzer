@@ -133,7 +133,8 @@ public final class HackRFDeviceQuery {
 	}
 
 	public static boolean isKnownHackrfBoard(int boardId) {
-		return boardId == 1 || boardId == 2 || boardId == 3 || boardId == 4;
+		return boardId == 1 || boardId == 2 || boardId == 3 || boardId == 4
+				|| boardId == 5;
 	}
 
 	private static int invokeInt(NativeLibrary lib, String name) {

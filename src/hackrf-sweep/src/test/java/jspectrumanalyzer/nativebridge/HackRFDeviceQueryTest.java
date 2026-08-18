@@ -58,6 +58,7 @@ class HackRFDeviceQueryTest {
 		assertTrue(HackRFDeviceQuery.isKnownHackrfBoard(1));
 		assertTrue(HackRFDeviceQuery.isKnownHackrfBoard(2));
 		assertTrue(HackRFDeviceQuery.isKnownHackrfBoard(4));
+		assertTrue(HackRFDeviceQuery.isKnownHackrfBoard(5));
 		assertFalse(HackRFDeviceQuery.isKnownHackrfBoard(0xFF));
 	}
 }

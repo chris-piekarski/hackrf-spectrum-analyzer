@@ -44,7 +44,7 @@ This is application integration against a real HackRF, plus a basic board health
 
 Contracts (when device + `.so` + writable node):
 
-- Firmware string parses as `YYYY.M.P` and is **≥ 2024.02.1**; USB API ≥ 1.00; board is Jawbreaker / One / rad1o / One r9
+- Firmware string parses as `YYYY.M.P` and is **≥ 2024.02.1**; USB API ≥ 1.00; board is Jawbreaker / One / rad1o / One r9 / Pro
 - `SpectrumSweepEngine` (same class the analyzer ctor starts): accepted queue packets ≥ 1, processed ≥ 1, `datasetSpectrum` bins updated
 - Live sweep with **app settings** (`FakeHackRFSettings` + `GainPolicy`) fills `DatasetSpectrumPeak` and a chart series
 - ≥1 callback with bins; `freqStart` in the requested band; finite power in [−140, 20] dBm

@@ -14,7 +14,7 @@ This guide will get you up and running with the HackRF Spectrum Analyzer GUI.
 
 ### Hardware
 - HackRF One (or compatible)
-- Recommended firmware: **v2024.02.1** or newer
+- Recommended firmware: **v2024.02.1** or newer (host SDK is pinned to **v2026.01.3**)
 
 ### Software
 - Java (OpenJDK 8 or later recommended)

@@ -47,8 +47,9 @@ field() {
 APP_VERSION=$(sed -n 's/.*version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$VERSION_JAVA" 2>/dev/null | head -1)
 [ -n "$APP_VERSION" ] || APP_VERSION="unknown"
 
-HACKRF_PIN=$(sed -n 's/.*git reset --hard \(v[^ ]*\).*/\1/p' "$MAKEFILE_SWEEP" 2>/dev/null | head -1)
-[ -n "$HACKRF_PIN" ] || HACKRF_PIN="v2024.02.1"
+HACKRF_PIN=$(sed -n 's/.*HACKRF_SDK_PIN=[[:space:]]*\(v[^ ]*\).*/\1/p' "$MAKEFILE_SWEEP" 2>/dev/null | head -1)
+[ -n "$HACKRF_PIN" ] || HACKRF_PIN=$(sed -n 's/.*git reset --hard \(v[^ ]*\).*/\1/p' "$MAKEFILE_SWEEP" 2>/dev/null | head -1)
+[ -n "$HACKRF_PIN" ] || HACKRF_PIN="v2026.01.3"
 
 HACKRF_CHECKED="(submodule not checked out)"
 if [ -d "$HACKRF_DIR/.git" ] || [ -f "$HACKRF_DIR/.git" ]; then
@@ -281,11 +282,11 @@ elif latest_tag and rel == 0:
     line("SDK / libhackrf:", "current (%s)" % pin)
 elif latest_tag and rel < 0:
     line("SDK / libhackrf:", "newer available: %s → %s" % (pin, latest_tag))
-    print("    recommendation:   firmware on the radio can be updated now")
+    print("    recommendation:   firmware on the radio can be updated independently")
     print("                      (https://hackrf.readthedocs.io/en/latest/updating_firmware.html)")
-    print("    host SDK:         stay on %s until a new sweep-as-library patch exists;" % pin)
-    print("                      bumping the submodule without that patch will break the native build.")
-    print("    host+firmware:    GSG requires matching libhackrf + firmware when you do upgrade both.")
+    print("    host SDK:         this app pins libhackrf; a newer GSG tag needs the")
+    print("                      sweep-as-library patch rebased before changing HACKRF_SDK_PIN.")
+    print("    host+firmware:    GSG requires matching libhackrf + firmware when you upgrade both.")
 elif latest_tag:
     line("SDK / libhackrf:", "pin %s is newer than latest tag %s" % (pin, latest_tag))
 

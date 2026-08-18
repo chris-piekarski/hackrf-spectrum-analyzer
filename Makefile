@@ -75,10 +75,13 @@ firmware-update: ## Flash official GSG firmware (dry-run; CONFIRM=1 to write)
 	@CONFIRM=$(CONFIRM) VERSION=$(VERSION) FIRMWARE=$(FIRMWARE) SERIAL=$(SERIAL) \
 		$(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts/hackrf-firmware-update.sh
 
+udev: ## Install persistent udev rules (sudo once). Keeps usbfs writable after usbipd attach.
+	@$(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts/hackrf-udev-install.sh
+
 ##@ Run
 start: build ## Build if needed, then launch the Linux app.
 	./src/hackrf-sweep/build/hackrf-spectrum-analyzer/hackrf_sweep_spectrum_analyzer_linux.sh
 
 run: start ## Alias for start.
 
-.PHONY: build clean test test-hw lint info list-devices firmware-update start run help deps runtime-deps
+.PHONY: build clean test test-hw lint info list-devices firmware-update udev start run help deps runtime-deps
