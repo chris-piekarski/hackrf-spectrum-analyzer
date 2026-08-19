@@ -39,7 +39,7 @@ public final class SpectrumSnapshotStore
 		this.ringCap = Math.max(1, ringCap);
 		this.ring = new ArrayDeque<SpectrumSnapshot>(this.ringCap);
 		this.context = new RadioContext(false, false, 0, null, null, null, null, false, 0, 0, 0, 0, 0, 0, false, false,
-				false, "", false, false, List.of());
+				false, "", false, false, false, List.of());
 	}
 
 	public boolean shouldPublish(long nowMs)
@@ -88,10 +88,11 @@ public final class SpectrumSnapshotStore
 		boolean peaks = settings.isChartsPeaksVisible() != null
 				&& Boolean.TRUE.equals(settings.isChartsPeaksVisible().getValue());
 		boolean auto = settings.isPowerAutoScale() != null && Boolean.TRUE.equals(settings.isPowerAutoScale().getValue());
+		boolean autoGain = settings.isAutoGain() != null && Boolean.TRUE.equals(settings.isAutoGain().getValue());
 		RadioContext next = new RadioContext(paused, released, sweepsPerSec, id.displayBoard(), id.shortSerial(),
 				id.displayFirmware(), id.usbApi, id.present, radio.startMHz, radio.endMHz, radio.fftBinHz, radio.samples,
 				radio.lnaGain, radio.vgaGain, radio.antennaPower, radio.antennaLna, radio.clkout, radio.serial, peaks,
-				auto, fm);
+				auto, autoGain, fm);
 		synchronized (lock)
 		{
 			context = next;

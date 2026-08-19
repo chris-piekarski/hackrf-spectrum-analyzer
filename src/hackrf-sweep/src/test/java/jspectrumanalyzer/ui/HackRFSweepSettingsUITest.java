@@ -27,7 +27,9 @@ class HackRFSweepSettingsUITest {
         flushEdt();
 
         assertEquals("100 000", ui.fftBinSpinner().getValue().toString());
-        assertFalse(ui.autoScaleCheckbox().isSelected(), "dB auto-scale is off; axis stays −100…+20");
+        assertTrue(ui.autoScaleCheckbox().isSelected(), "dB auto-scale is on so FM/Wi-Fi peaks fill the axis");
+        assertTrue(ui.autoGainCheckbox().isSelected(), "auto gain is the default");
+        assertFalse(ui.gainSlider().isEnabled(), "gain sliders stay locked while auto is on");
         assertEquals("Pause", ui.pauseButton().getText());
         assertTrue(ui.peakFallSpinner().isVisible());
         assertTrue(ui.decayRateCombo().isVisible());
@@ -38,9 +40,14 @@ class HackRFSweepSettingsUITest {
         assertTrue(settings.isCapturingPaused().getValue());
         assertEquals("Resume", ui.pauseButton().getText());
 
-        SwingUtilities.invokeAndWait(() -> ui.autoScaleCheckbox().setSelected(true));
+        SwingUtilities.invokeAndWait(() -> ui.autoScaleCheckbox().setSelected(false));
         flushEdt();
-        assertTrue(settings.isPowerAutoScale().getValue());
+        assertFalse(settings.isPowerAutoScale().getValue());
+
+        SwingUtilities.invokeAndWait(() -> ui.autoGainCheckbox().setSelected(false));
+        flushEdt();
+        assertFalse(settings.isAutoGain().getValue());
+        assertTrue(ui.gainSlider().isEnabled(), "unchecking Auto unlocks the gain sliders");
 
         settings.isChartsPeaksVisible().setValue(false);
         flushEdt();

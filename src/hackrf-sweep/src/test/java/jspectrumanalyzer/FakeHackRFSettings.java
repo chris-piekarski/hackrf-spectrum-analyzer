@@ -177,6 +177,11 @@ public class FakeHackRFSettings implements HackRFSettings {
 	}
 
 	@Override
+	public ModelValueBoolean isAutoGain() {
+		return inner.isAutoGain();
+	}
+
+	@Override
 	public ModelValueBoolean isFilterSpectrum() {
 		return inner.isFilterSpectrum();
 	}

@@ -14,7 +14,7 @@ public final class SpectrumPowerScale
 	public static final float EMPTY_CEILING = -140f;
 	public static final float MIN_SPAN_DB = 40f;
 	/** Headroom above the peak / below the noise so the trace is not against the ticks. */
-	public static final float PAD_DB = 20f;
+	public static final float PAD_DB = 10f;
 	/** Display edges lock to multiples of 10 dB. */
 	public static final float TICK_DB = 10f;
 	/**

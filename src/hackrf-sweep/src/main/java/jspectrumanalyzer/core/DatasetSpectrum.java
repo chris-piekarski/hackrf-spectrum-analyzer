@@ -135,11 +135,13 @@ public class DatasetSpectrum implements Cloneable
 		float[] yValues = new float[out];
 		if (out == n)
 		{
-			// Same as the historic path: do not NaN-out holes here.
-			// JFreeChart breaks the line on NaN and FM looks like a flat
-			// noise dash in each 5 MHz hop slice.
-			System.arraycopy(freq, 0, xValues, 0, n);
-			System.arraycopy(ySource, 0, yValues, 0, n);
+			for (int i = 0; i < n; i++)
+			{
+				xValues[i] = freq[i];
+				// Break the line on unfilled hop holes so −150 dB does not
+				// drag the trace to the floor. Auto-scale ignores holes.
+				yValues[i] = isChartHole(ySource[i]) ? Float.NaN : ySource[i];
+			}
 		}
 		else
 		{

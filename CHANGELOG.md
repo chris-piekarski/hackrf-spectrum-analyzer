@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Auto gain** (default on): live AGC picks LNA then VGA per Quick Select so the plot is not all-blue or all-red. Seeds by band (FM higher, 2.4 GHz lower), aims the peak near −28 dBm, drops immediately on clip, and holds Wi‑Fi bursts so quiet gaps do not pump. Uncheck **Auto** on the Gain row to take the sliders.
+- Waterfall left-side time scale (`now`, `2s`, `5s`, …) aligned to the spectrum Y-axis gutter. Ages come from per-row timestamps so Pause does not drift the labels. Hover shows the row’s age next to the MHz readout.
 - Opt-in MCP server (`make mcp` / `--mcp`) so local agents can read `spectrum_summary`, `spectrum_snapshot`, `radio_identity`, `sweep_config`, and `fm_stations` from the same JVM that holds the radio. Snapshots omit hop holes and are sampled at ≤10 Hz. Stdio proxy: `scripts/mcp-spectrum-proxy.py`.
 - README status badges: Java 21, HackRF SDK v2026.01.3, min firmware, Linux|Windows, last commit.
 - `FrequencyAxis`, `BandMark` layers, and a shared `BandHeaderPainter` so Wi-Fi / FM / Quick Select overlays share one MHz↔pixel map and header. `AnalyzerSettings` owns all `HackRFSettings` model values (radio vs display) so the analyzer frame no longer stores them.
@@ -26,7 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved top-level `Makefile` with `make help`, `make test`, `make lint`, `make start`, categorized colored output
 - Enhanced `src/hackrf-sweep/Makefile` with matching help and quality targets
 
+### Fixed
+- Waterfall stayed on a fixed −90…−25 palette after the spectrum Y-axis started auto-scaling, so a typical FM band (−85…−65 dBm) rendered as solid blue with no station streaks. Auto-scale now drives the waterfall colors from the same live window; turning auto-scale off restores the Chart-options sliders.
+
 ### Changed
+- Auto-scale pad around the live noise/peak is **10 dB** (was 20) so a 15 dB FM contrast actually fills the plot.
 - Java **8 → 21** (`--release 21`). FlatLaf 3.7.2 dark look-and-feel. JFreeChart 1.5.6, MigLayout 11.4.3, JNA 5.19.1, JUnit 5.13.4, JaCoCo 0.8.15. Launchers refuse older or headless JREs. `HackrfSweepLibrary` is hand-maintained (`make jnabridge` no longer runs JNAerator).
 - Host libhackrf / SDK pin **v2024.02.1 → v2026.01.3** (USB API 1.16). Sweep-as-library patch rebased (`num_fft_bins`, `stdbool.h`). JNA ABI unchanged. `isKnownHackrfBoard` accepts HackRF Pro (board id 5). Min firmware remains 2024.02.1.
 - Modernized build (Maven + cross-platform native)
@@ -40,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Frequency zoom / Quick Select keep the last sweep on screen and debounce the radio apply (~120 ms) so a wheel flick is one USB restart, not one per tick. Chart series skip −150 dB hop holes and downsample to the plot width. Domain-axis updates run on the EDT.
-- Spectrum dB axis default is the fixed **−100…+20** window (10 dB ticks). Optional **Auto-scale dB axis** under Chart options fits the live band (20 dB pad, edges locked to multiples of 10). Hop holes at −150 dB are ignored. Live follow holds through wobble and bursty peaks, expands only when a signal would clip, and shrinks at most one 10 dB tick every 3 s if that whole window stayed quiet.
+- Spectrum **Auto-scale dB axis** is on by default (10 dB pad, edges locked to multiples of 10) so FM/Wi-Fi peaks are readable. Chart options still offers a fixed **−100…+20** window. Hop holes at −150 dB are ignored. Live follow holds through wobble and bursty peaks, expands only when a signal would clip, and shrinks at most one 10 dB tick every 3 s if that whole window stayed quiet.
 - Narrow sweep windows (FM 88–108 is one 20 MHz hop) finished 400+ sweeps/s and flooded the waterfall plus Swing updates, so the plot looked frozen. Display work is capped at 30 fps; the radio still sweeps at full rate.
 - Quick Select hover is an in-panel range line (`2402–2472 MHz`), not Swing/X11 tooltip windows. Moving to another button replaces the same line; unit tests dispatch enter/exit and assert a single hint.
 - Wi-Fi 2 vertical bands were the 5 MHz numbering raster in a 2407–2467 window, so the left edge was channel 2’s occupied start (2417−10) and channel 1’s 20 MHz (2402–2422) was clipped. Overlay now draws occupied 20 MHz (ch 1 = 2402–2422, ch 11 = 2452–2472) and **WiFi 2** is 2402–2472.

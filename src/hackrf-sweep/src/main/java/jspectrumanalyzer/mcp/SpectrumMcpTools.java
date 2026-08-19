@@ -47,7 +47,7 @@ public final class SpectrumMcpTools
 						"{\"type\":\"object\",\"properties\":{}}")
 				+ ","
 				+ tool("sweep_config",
-						"Armed radio settings (range, FFT, gain, CLKOUT) plus display flags (peaks, auto-scale).",
+						"Armed radio settings (range, FFT, gain, CLKOUT) plus display flags (peaks, auto-scale, auto-gain).",
 						"{\"type\":\"object\",\"properties\":{}}")
 				+ ","
 				+ tool("fm_stations",

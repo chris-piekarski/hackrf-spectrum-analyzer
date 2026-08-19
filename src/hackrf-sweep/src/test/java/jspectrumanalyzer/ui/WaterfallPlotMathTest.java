@@ -16,6 +16,25 @@ class WaterfallPlotMathTest {
     }
 
     @Test
+    void liveFmWindowPutsThePeakInTheHotHalfOfThePalette() {
+        // Observed indoor FM: noise −83.5, peak −67.5. The historic
+        // fixed −90…−25 scale parks that entire band in the blue third.
+        assertTrue(WaterfallPlot.normalizePower(-67.5, -90, 65) < 0.40);
+        int start = WaterfallPlot.paletteStartDb(-100);
+        int size = WaterfallPlot.paletteSizeDb(-100, -50);
+        assertEquals(-100, start);
+        assertEquals(50, size);
+        assertTrue(WaterfallPlot.normalizePower(-67.5, start, size) > 0.60);
+        assertTrue(WaterfallPlot.normalizePower(-83.5, start, size) < 0.40);
+    }
+
+    @Test
+    void paletteSizeDbNeverReturnsZero() {
+        assertEquals(1, WaterfallPlot.paletteSizeDb(-50, -50));
+        assertEquals(1, WaterfallPlot.paletteSizeDb(0, -4));
+    }
+
+    @Test
     void clampPixelXStaysInBuffer() {
         assertEquals(0, WaterfallPlot.clampPixelX(-3, 10));
         assertEquals(9, WaterfallPlot.clampPixelX(99, 10));

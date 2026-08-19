@@ -56,14 +56,14 @@ class DatasetSpectrumTest {
     }
 
     @Test
-    void fullResolutionChartSeriesKeepsThePeakAndDoesNotNaNHoles() {
+    void fullResolutionChartSeriesKeepsThePeakAndBreaksHoles() {
         DatasetSpectrum ds = new DatasetSpectrum(100000f, 88, 108, -150f);
         for (int i = 0; i < ds.spectrumLength(); i++)
             ds.getSpectrumArray()[i] = i % 3 == 0 ? -150f : -62f;
         ds.getSpectrumArray()[10] = -35f;
         jspectrumanalyzer.core.jfc.XYSeriesImmutable xy = ds.createSpectrumDataset("fm");
         assertEquals(ds.spectrumLength(), xy.getItemCount());
-        assertEquals(-150.0, xy.getYY(0), 0.001);
+        assertTrue(Double.isNaN(xy.getYY(0)));
         assertEquals(-35.0, xy.getYY(10), 0.001);
     }
 

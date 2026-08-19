@@ -84,6 +84,7 @@ import jspectrumanalyzer.core.FrequencyAllocationTable;
 import jspectrumanalyzer.core.FrequencyAllocations;
 import jspectrumanalyzer.core.FrequencyBand;
 import jspectrumanalyzer.core.FrequencyRange;
+import jspectrumanalyzer.core.AutoGainPolicy;
 import jspectrumanalyzer.core.GainPolicy;
 import jspectrumanalyzer.core.HackRFSettings;
 import jspectrumanalyzer.core.PersistentDisplay;
@@ -171,6 +172,9 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private final jspectrumanalyzer.mcp.SpectrumSnapshotStore snapshotStore = new jspectrumanalyzer.mcp.SpectrumSnapshotStore();
 	private jspectrumanalyzer.mcp.SpectrumMcpServer	mcpServer;
 	private volatile boolean						flagManualGain						= false;
+	private volatile boolean						flagApplyingAutoGain				= false;
+	private volatile boolean						flagCoalesceGainRestart				= false;
+	private final AutoGainPolicy.Loop				autoGainLoop						= new AutoGainPolicy.Loop();
 	private volatile boolean						forceStopSweep						= false;
 	/**
 	 * Capture a GIF of the program for the GITHUB page
@@ -251,7 +255,14 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			settings.getFrequencyAllocationTable().setValue(new FrequencyAllocations().getTable().values().stream().findFirst().get());
 		}
 
-		recalculateGains(settings.getGain().getValue());
+		if (settings.isAutoGain().getValue()) {
+			FrequencyRange boot = settings.getFrequency().getValue();
+			int seed = AutoGainPolicy.seedGain(boot.getStartMHz(), boot.getEndMHz());
+			settings.getGain().setValue(seed);
+			recalculateGains(seed);
+		} else {
+			recalculateGains(settings.getGain().getValue());
+		}
 
 		setupChart();
 
@@ -494,6 +505,11 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	public ModelValueBoolean isPowerAutoScale() {
 		return settings.isPowerAutoScale();
 	}
+
+	@Override
+	public ModelValueBoolean isAutoGain() {
+		return settings.isAutoGain();
+	}
 	
 	@Override
 	public ModelValueBoolean isDebugDisplay() {
@@ -704,6 +720,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 			FrequencyRange sweepRange = getFreq();
 			fmStations = fmTracker.update(ds, sweepRange.getStartMHz(), sweepRange.getEndMHz());
+			considerAutoGain(ds, sweepRange);
 
 			if (System.currentTimeMillis() - perfWatch.lastStatisticsRefreshed > 1000) {
 				synchronized (perfWatch) {
@@ -751,6 +768,15 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 			if (settings.isWaterfallVisible().getValue()) {
 				long start = System.nanoTime();
+				if (settings.isPowerAutoScale().getValue())
+					waterfallPlot.applyPowerWindow(yLow, yHigh);
+				else {
+					int startDb = settings.getSpectrumPaletteStart().getValue();
+					int sizeDb = settings.getSpectrumPaletteSize().getValue();
+					waterfallPlot.setSpectrumPaletteStart(startDb);
+					if (sizeDb >= SPECTRUM_PALETTE_SIZE_MIN)
+						waterfallPlot.setSpectrumPaletteSize(sizeDb);
+				}
 				waterfallPlot.addNewData(datasetSpectrum);
 				synchronized (perfWatch) {
 					perfWatch.waterfallUpdate.addDrawingTime(System.nanoTime() - start);
@@ -786,6 +812,45 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		this.settings.getGainLNA().setValue(lnaGain);
 		this.settings.getGainVGA().setValue(vgaGain);
 		this.settings.getGain().setValue(lnaGain + vgaGain);
+	}
+
+	private void applyAutoGain(int totalGain, boolean restart) {
+		int snapped = GainPolicy.clampTotal(totalGain);
+		flagApplyingAutoGain = true;
+		flagCoalesceGainRestart = !restart;
+		try {
+			if (settings.getGain().getValue() != snapped)
+				settings.getGain().setValue(snapped);
+		} finally {
+			flagApplyingAutoGain = false;
+			flagCoalesceGainRestart = false;
+		}
+	}
+
+	private void maybeSeedAutoGain(FrequencyRange range) {
+		if (range == null || !settings.isAutoGain().getValue())
+			return;
+		Integer seed = autoGainLoop.seedIfBandShifted(range.getStartMHz(), range.getEndMHz(),
+				settings.getGain().getValue());
+		if (seed == null)
+			return;
+		autoGainLoop.markSettling(System.currentTimeMillis());
+		applyAutoGain(seed.intValue(), false);
+	}
+
+	private void considerAutoGain(DatasetSpectrumPeak ds, FrequencyRange range) {
+		if (ds == null || range == null)
+			return;
+		if (!settings.isAutoGain().getValue() || settings.isCapturingPaused().getValue()
+				|| settings.isRadioReleased().getValue())
+			return;
+		AutoGainPolicy.Observation obs = AutoGainPolicy.observe(ds, settings.getGain().getValue(),
+				range.getStartMHz(), range.getEndMHz());
+		Integer next = autoGainLoop.consider(obs, System.currentTimeMillis());
+		if (next == null || next.intValue() == settings.getGain().getValue())
+			return;
+		autoGainLoop.markSettling(System.currentTimeMillis());
+		applyAutoGain(next.intValue(), true);
 	}
 
 	/**
@@ -1232,6 +1297,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				chart.getXYPlot().getDomainAxis().setRange(range.getStartMHz(), range.getEndMHz());
 			if (!applyingSpectrumZoom)
 				spectrumZoomHistory.clear();
+			maybeSeedAutoGain(range);
 		});
 		settings.getAntennaPowerEnable().addListener(restartHackrf);
 		settings.getAntennaLNA().addListener(restartHackrf);
@@ -1245,7 +1311,10 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			if (flagManualGain) //flag is being adjusted manually by LNA or VGA, do not recalculate the gains
 				return;
 			recalculateGains(gainTotal);
-			restartHackrfSweep();
+			if (!flagCoalesceGainRestart)
+				restartHackrfSweep();
+			if (!flagApplyingAutoGain && settings.isAutoGain().getValue())
+				settings.isAutoGain().setValue(false);
 		});
 		Runnable gainRecalc = () -> {
 			int totalGain = settings.getGainLNA().getValue() + settings.getGainVGA().getValue();
@@ -1257,10 +1326,25 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			} finally {
 				flagManualGain = false;
 			}
-			restartHackrfSweep();
+			if (!flagApplyingAutoGain && settings.isAutoGain().getValue())
+				settings.isAutoGain().setValue(false);
+			if (!flagCoalesceGainRestart && !flagApplyingAutoGain)
+				restartHackrfSweep();
 		};
 		settings.getGainLNA().addListener(gainRecalc);
 		settings.getGainVGA().addListener(gainRecalc);
+		settings.isAutoGain().addListener((on) -> {
+			if (!Boolean.TRUE.equals(on))
+				return;
+			autoGainLoop.reset();
+			FrequencyRange range = getFreq();
+			Integer seed = autoGainLoop.seedIfBandShifted(range.getStartMHz(), range.getEndMHz(),
+					settings.getGain().getValue());
+			if (seed == null)
+				return;
+			autoGainLoop.markSettling(System.currentTimeMillis());
+			applyAutoGain(seed.intValue(), true);
+		});
 
 		settings.isSpurRemoval().addListener(() -> {
 			SpurFilter filter = spurFilter;

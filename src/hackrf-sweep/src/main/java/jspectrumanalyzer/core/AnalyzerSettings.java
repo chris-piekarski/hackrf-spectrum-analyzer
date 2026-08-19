@@ -70,7 +70,8 @@ public final class AnalyzerSettings implements HackRFSettings
 	private final ModelValueBoolean persistentDisplay = new ModelValueBoolean("Persistent display", true);
 	private final ModelValueInt samples = new ModelValueInt("Samples", 8192);
 	private final ModelValueBoolean showPeaks = new ModelValueBoolean("Show peaks", true);
-	private final ModelValueBoolean powerAutoScale = new ModelValueBoolean("Auto-scale dB axis", false);
+	private final ModelValueBoolean powerAutoScale = new ModelValueBoolean("Auto-scale dB axis", true);
+	private final ModelValueBoolean autoGain = new ModelValueBoolean("Auto gain", true);
 	private final ModelValueBoolean debugDisplay = new ModelValueBoolean("Debug", false);
 	private final ModelValue<BigDecimal> spectrumLineThickness = new ModelValue<BigDecimal>("Spectrum line thickness",
 			new BigDecimal("1"));
@@ -276,6 +277,12 @@ public final class AnalyzerSettings implements HackRFSettings
 	public ModelValueBoolean isPowerAutoScale()
 	{
 		return powerAutoScale;
+	}
+
+	@Override
+	public ModelValueBoolean isAutoGain()
+	{
+		return autoGain;
 	}
 
 	@Override

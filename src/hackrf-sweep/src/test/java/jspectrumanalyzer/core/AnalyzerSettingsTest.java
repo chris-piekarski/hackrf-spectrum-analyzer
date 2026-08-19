@@ -18,7 +18,8 @@ class AnalyzerSettingsTest {
 		assertEquals(100000, s.getFFTBinHz().getValue());
 		assertEquals(8192, s.getSamples().getValue());
 		assertTrue(s.isChartsPeaksVisible().getValue());
-		assertFalse(s.isPowerAutoScale().getValue());
+		assertTrue(s.isPowerAutoScale().getValue());
+		assertTrue(s.isAutoGain().getValue());
 		assertTrue(s.isPersistentDisplayVisible().getValue());
 		assertTrue(s.isWaterfallVisible().getValue());
 		assertEquals(RadioIdentity.ABSENT, s.getRadioIdentity().getValue());
@@ -33,6 +34,7 @@ class AnalyzerSettingsTest {
 		assertTrue(s.isRadioSetting(s.getClkoutEnable()));
 		assertFalse(s.isRadioSetting(s.isChartsPeaksVisible()));
 		assertFalse(s.isRadioSetting(s.isPowerAutoScale()));
+		assertFalse(s.isRadioSetting(s.isAutoGain()));
 		assertFalse(s.isRadioSetting(s.isPersistentDisplayVisible()));
 		assertFalse(s.isRadioSetting(s.getSpectrumPaletteStart()));
 	}

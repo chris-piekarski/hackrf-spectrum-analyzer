@@ -244,12 +244,13 @@ public final class SpectrumSnapshot
 		public final String selectedSerial;
 		public final boolean peaks;
 		public final boolean autoScale;
+		public final boolean autoGain;
 		public final List<FmHit> fmStations;
 
 		public RadioContext(boolean paused, boolean released, double sweepsPerSec, String board, String serial,
 				String firmware, String usbApi, boolean present, int radioStartMHz, int radioEndMHz, int radioFftBinHz,
 				int samples, int lnaGain, int vgaGain, boolean antennaPower, boolean antennaLna, boolean clkout,
-				String selectedSerial, boolean peaks, boolean autoScale, List<FmHit> fmStations)
+				String selectedSerial, boolean peaks, boolean autoScale, boolean autoGain, List<FmHit> fmStations)
 		{
 			this.paused = paused;
 			this.released = released;
@@ -271,6 +272,7 @@ public final class SpectrumSnapshot
 			this.selectedSerial = selectedSerial == null ? "" : selectedSerial;
 			this.peaks = peaks;
 			this.autoScale = autoScale;
+			this.autoGain = autoGain;
 			this.fmStations = fmStations == null ? List.of() : List.copyOf(fmStations);
 		}
 
@@ -303,7 +305,8 @@ public final class SpectrumSnapshot
 			Json.appendKey(sb, "serial").append(Json.quote(selectedSerial));
 			sb.append("},\"display\":{");
 			Json.appendKey(sb, "peaks").append(peaks).append(',');
-			Json.appendKey(sb, "autoScale").append(autoScale);
+			Json.appendKey(sb, "autoScale").append(autoScale).append(',');
+			Json.appendKey(sb, "autoGain").append(autoGain);
 			sb.append("}}");
 			return sb.toString();
 		}

@@ -81,8 +81,10 @@ class SpectrumSnapshotStoreTest {
 		SpectrumSnapshotStore store = new SpectrumSnapshotStore();
 		store.publishContext(settings, List.of(hit), 12.5);
 		assertTrue(store.context().autoScale);
+		assertTrue(store.context().autoGain);
 		assertFalse(store.context().peaks);
 		assertTrue(store.context().sweepConfigJson().contains("\"autoScale\":true"));
+		assertTrue(store.context().sweepConfigJson().contains("\"autoGain\":true"));
 		assertTrue(store.context().sweepConfigJson().contains("\"radio\""));
 		assertFalse(store.context().sweepConfigJson().contains("97.3"));
 		assertEquals("[]", store.context().fmStationsJson());
