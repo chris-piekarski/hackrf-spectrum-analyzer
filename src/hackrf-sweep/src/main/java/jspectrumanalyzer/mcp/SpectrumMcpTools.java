@@ -10,7 +10,7 @@ public final class SpectrumMcpTools
 {
 	public static final String PROTOCOL = "2024-11-05";
 	public static final String SERVER_NAME = "hackrf-spectrum-analyzer";
-	public static final String SERVER_VERSION = "2.0";
+	public static final String SERVER_VERSION = "2.0.0";
 
 	private final SpectrumSnapshotStore store;
 

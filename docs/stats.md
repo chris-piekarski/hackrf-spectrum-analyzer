@@ -2,7 +2,7 @@
 
 # Repository stats
 
-Refreshed **2026-08-19 03:06 UTC** from `9ca0b23` on `master` (last commit 2026-08-18 09:06:40 -0600).
+Refreshed **2026-08-19 18:58 UTC** from `04b8e1e` on `master` (last commit 2026-08-19 12:57:28 -0600).
 
 Regenerate:
 
@@ -18,47 +18,49 @@ Vendor trees (`src/hackrf-sweep/lib/hackrf`, libusb, FFTW), `target/`, and `buil
 
 | | |
 |---|---|
-| App version | `v2024.11.10-fork` |
+| App version | `2.0.0` |
 | Java `--release` | 21 |
 | Host SDK pin | `v2026.01.3` |
 | Minimum firmware | `2024.02.1` |
 | Quick Select presets | 15 |
 | USA allocation rows | 574 |
-| Git commits on this branch | 96 |
-| First-party lines (all counted trees) | 11273 |
+| Git commits on this branch | 101 |
+| First-party lines (all counted trees) | 18206 |
 
 ```mermaid
 pie showData
     title First-party physical lines
-    "Java main" : 5498
-    "Java test" : 2821
-    "Docs" : 1326
-    "Scripts + first-party C" : 1628
+    "Java main" : 10209
+    "Java test" : 4894
+    "Docs" : 1374
+    "Scripts + first-party C" : 1729
 ```
 
 ## Java by area
 
-Production (`src/main/java`): **40** files, **5498** lines.
+Production (`src/main/java`): **69** files, **10209** lines.
 
 | Package | Files | Lines |
 |---|---:|---:|
-| `jspectrumanalyzer/core` | 16 | 1819 |
-| `jspectrumanalyzer/ui` | 12 | 1584 |
-| `jspectrumanalyzer` | 2 | 1206 |
+| `jspectrumanalyzer/core` | 32 | 3889 |
+| `jspectrumanalyzer/ui` | 20 | 2656 |
+| `jspectrumanalyzer` | 2 | 1552 |
+| `jspectrumanalyzer/mcp` | 5 | 1159 |
+| `jspectrumanalyzer/nativebridge` | 3 | 343 |
 | `jspectrumanalyzer/capture` | 2 | 282 |
-| `jspectrumanalyzer/nativebridge` | 3 | 281 |
 | `shared/mvc` | 2 | 244 |
 | `jspectrumanalyzer/core/jfc` | 2 | 61 |
-| `hackrfsweep` | 1 | 21 |
+| `hackrfsweep` | 1 | 23 |
 
-Tests (`src/test/java`): **41** files, **2821** lines.
+Tests (`src/test/java`): **64** files, **4894** lines.
 
 | Package | Files | Lines |
 |---|---:|---:|
-| `jspectrumanalyzer/core` | 15 | 1068 |
-| `jspectrumanalyzer/ui` | 11 | 603 |
+| `jspectrumanalyzer/core` | 27 | 2148 |
+| `jspectrumanalyzer/ui` | 19 | 1301 |
 | `jspectrumanalyzer/hw` | 5 | 553 |
-| `jspectrumanalyzer` | 3 | 218 |
+| `jspectrumanalyzer/mcp` | 3 | 261 |
+| `jspectrumanalyzer` | 3 | 252 |
 | `shared/mvc` | 2 | 186 |
 | `jspectrumanalyzer/nativebridge` | 1 | 83 |
 | `jspectrumanalyzer/core/jfc` | 3 | 74 |
@@ -68,8 +70,8 @@ Tests (`src/test/java`): **41** files, **2821** lines.
 
 | Kind | Count |
 |---|---:|
-| Unit test classes (`@Test`, not `*IT`) | 35 |
-| `@Test` methods (unit + hardware IT) | 131 |
+| Unit test classes (`@Test`, not `*IT`) | 58 |
+| `@Test` methods (unit + hardware IT) | 263 |
 | Hardware IT classes (`*IT`) | 1 |
 | `@HardwareTest` methods | 7 |
 | Support types (fakes, annotations, helpers) | 5 |
@@ -80,16 +82,16 @@ Tests (`src/test/java`): **41** files, **2821** lines.
 
 | Tree | Files | Lines |
 |---|---:|---:|
-| Docs (`docs/`) | 13 | 1326 |
-| Scripts (`scripts/`) | 6 | 1094 |
-| First-party C / patch (`src-c/`) | 3 | 534 |
+| Docs (`docs/`) | 13 | 1374 |
+| Scripts (`scripts/`) | 7 | 1156 |
+| First-party C / patch (`src-c/`) | 3 | 573 |
 
 ## Build surface
 
 | Makefile | Documented / named targets |
 |---|---|
-| Root | 16 (`help`, `deps`, `runtime-deps`, `build`, `clean`, `test`, `test-hw`, `lint`, `stats`, `mermaid`, `info`, `list-devices`, `firmware-update`, `udev`, `start`, `run`) |
-| `src/hackrf-sweep` | 20 |
+| Root | 17 (`help`, `deps`, `runtime-deps`, `build`, `clean`, `test`, `test-hw`, `lint`, `stats`, `mermaid`, `info`, `list-devices`, `firmware-update`, `udev`, `start`, `mcp`, `run`) |
+| `src/hackrf-sweep` | 21 |
 
 ## Diagrams
 
@@ -123,14 +125,14 @@ pie showData
 
 | File | Lines |
 |---|---:|
-| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/HackRFSweepSpectrumAnalyzer.java` | 1199 |
-| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/ui/HackRFSweepSettingsUI.java` | 454 |
-| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/ui/WaterfallPlot.java` | 361 |
-| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/core/PersistentDisplay.java` | 268 |
-| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/core/SpurFilter.java` | 244 |
-| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/ui/FrequencySelectorPanel.java` | 230 |
-| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/core/SpectrumSweepEngine.java` | 220 |
-| `src/hackrf-sweep/src/test/java/jspectrumanalyzer/hw/HackRFSweepHardwareIT.java` | 218 |
+| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/HackRFSweepSpectrumAnalyzer.java` | 1545 |
+| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/ui/HackRFSweepSettingsUI.java` | 577 |
+| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/ui/WaterfallPlot.java` | 465 |
+| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/mcp/SpectrumSnapshot.java` | 388 |
+| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/core/AnalyzerSettings.java` | 319 |
+| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/core/DatasetSpectrum.java` | 280 |
+| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/core/PersistentDisplay.java` | 270 |
+| `src/hackrf-sweep/src/main/java/jspectrumanalyzer/mcp/McpJson.java` | 266 |
 
 `HackRFSweepSpectrumAnalyzer.java` is the Swing shell. Prefer growing `core/` and tests rather than this class.
 
@@ -140,7 +142,7 @@ pie showData
 |---|---:|
 | Pavol Sakac | 27 |
 | selabnayr | 24 |
-| Chris Piekarski | 16 |
+| Chris Piekarski | 21 |
 | _sekki | 12 |
 | pavsa | 10 |
 | Christopher Piekarski | 3 |

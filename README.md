@@ -1,5 +1,6 @@
 # Spectrum Analyzer
 
+[![Release](https://img.shields.io/github/v/release/chris-piekarski/hackrf-spectrum-analyzer)](https://github.com/chris-piekarski/hackrf-spectrum-analyzer/releases/latest)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](docs/building.md)
 [![HackRF SDK](https://img.shields.io/badge/HackRF_SDK-v2026.01.3-success.svg)](docs/hackrf-setup.md)

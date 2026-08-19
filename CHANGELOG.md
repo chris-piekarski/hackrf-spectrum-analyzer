@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-19
+
 ### Added
 - **Auto gain** (default on): live AGC picks LNA then VGA per Quick Select so the plot is not all-blue or all-red. Seeds by band (FM higher, 2.4 GHz lower), aims the peak near −28 dBm, drops immediately on clip, and holds Wi‑Fi bursts so quiet gaps do not pump. Uncheck **Auto** on the Gain row to take the sliders.
 - Waterfall left-side time scale (`now`, `2s`, `5s`, …) aligned to the spectrum Y-axis gutter. Ages come from per-row timestamps so Pause does not drift the labels. Hover shows the row’s age next to the MHz readout.
