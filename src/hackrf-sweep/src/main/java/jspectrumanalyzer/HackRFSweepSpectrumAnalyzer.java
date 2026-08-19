@@ -76,8 +76,8 @@ import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.chart.ui.TextAnchor;
 
 import jspectrumanalyzer.capture.ScreenCapture;
+import jspectrumanalyzer.core.AnalyzerSettings;
 import jspectrumanalyzer.core.DatasetSpectrumPeak;
-import jspectrumanalyzer.core.FmChannelPlan;
 import jspectrumanalyzer.core.FmStationHit;
 import jspectrumanalyzer.core.FmStationTracker;
 import jspectrumanalyzer.core.FrequencyAllocationTable;
@@ -91,10 +91,10 @@ import jspectrumanalyzer.core.RadioIdentity;
 import jspectrumanalyzer.core.RuntimePerformanceWatch;
 import jspectrumanalyzer.core.SpectrumPowerScale;
 import jspectrumanalyzer.core.SpectrumSweepEngine;
+import jspectrumanalyzer.core.SweepConfig;
 import jspectrumanalyzer.core.SpectrumZoom;
 import jspectrumanalyzer.core.SpectrumZoomHistory;
 import jspectrumanalyzer.core.SpurFilter;
-import jspectrumanalyzer.core.WifiChannelPlan;
 import jspectrumanalyzer.core.jfc.XYSeriesCollectionImmutable;
 import jspectrumanalyzer.nativebridge.HackRFDeviceQuery;
 import jspectrumanalyzer.nativebridge.HackRFSweepDataCallback;
@@ -106,7 +106,6 @@ import jspectrumanalyzer.ui.FmChannelOverlay;
 import jspectrumanalyzer.ui.QuickSelectBandOverlay;
 import jspectrumanalyzer.ui.SpectrumZoomOverlay;
 import jspectrumanalyzer.ui.WifiChannelOverlay;
-import shared.mvc.MVCController;
 import shared.mvc.ModelValue;
 import shared.mvc.ModelValue.ModelValueBoolean;
 import shared.mvc.ModelValue.ModelValueInt;
@@ -131,15 +130,30 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 	public static void main(String[] args) throws IOException {
 		//		System.out.println(new File("").getAbsolutePath());
-		if (args.length > 0) {
-			if (args[0].equals("capturegif")) {
-				captureGIF = true;
+		boolean mcpTcp = false;
+		boolean mcpStdio = false;
+		int mcpPort = jspectrumanalyzer.mcp.SpectrumMcpServer.DEFAULT_PORT;
+		if (args != null) {
+			for (int i = 0; i < args.length; i++) {
+				String a = args[i];
+				if ("capturegif".equals(a))
+					captureGIF = true;
+				else if ("--mcp".equals(a) || "mcp".equals(a))
+					mcpTcp = true;
+				else if ("--mcp-stdio".equals(a))
+					mcpStdio = true;
+				else if (a != null && a.startsWith("--mcp-port="))
+					mcpPort = Integer.parseInt(a.substring("--mcp-port=".length()));
 			}
 		}
 		//		try { Thread.sleep(20000); System.out.println("Started..."); } catch (InterruptedException e) {}
 
 		jspectrumanalyzer.ui.AnalyzerLookAndFeel.install();
-		new HackRFSweepSpectrumAnalyzer();
+		HackRFSweepSpectrumAnalyzer app = new HackRFSweepSpectrumAnalyzer();
+		if (mcpTcp)
+			app.startMcpTcp(mcpPort);
+		if (mcpStdio)
+			app.startMcpStdio();
 	}
 
 	public boolean									flagIsHWSendingData						= false;
@@ -154,28 +168,19 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private ChartPanel								chartPanel;
 	private ColorScheme								colors								= new ColorScheme();
 	private DatasetSpectrumPeak						datasetSpectrum;
+	private final jspectrumanalyzer.mcp.SpectrumSnapshotStore snapshotStore = new jspectrumanalyzer.mcp.SpectrumSnapshotStore();
+	private jspectrumanalyzer.mcp.SpectrumMcpServer	mcpServer;
 	private volatile boolean						flagManualGain						= false;
 	private volatile boolean						forceStopSweep						= false;
 	/**
 	 * Capture a GIF of the program for the GITHUB page
 	 */
 	private ScreenCapture							gifCap								= null;
-	private ArrayList<HackRFEventListener>			hRFlisteners							= new ArrayList<>();
+	private final AnalyzerSettings					settings							= new AnalyzerSettings();
 	private BufferedImage							imageFrequencyAllocationTableBands	= null;
 	private boolean											isChartDrawing						= false;
 	private ReentrantLock							lock								= new ReentrantLock();
 
-	private ModelValueBoolean						parameterAntPower					= new ModelValueBoolean(
-			"Ant power", false);
-	private ModelValueBoolean						parameterAntennaLNA					= new ModelValueBoolean(
-			"Antenna LNA +14dB", false);
-	private ModelValueInt							parameterFFTBinHz					= new ModelValueInt(
-			"FFT Bin [Hz]", 100000);
-	private ModelValueBoolean						parameterFilterSpectrum				= new ModelValueBoolean(
-			"Filter", false);
-	private ModelValue<FrequencyRange>				parameterFrequency					= new ModelValue<>(
-			"Frequency range", new FrequencyRange(WifiChannelPlan.WIFI_24_VIEW_START_MHZ,
-					WifiChannelPlan.WIFI_24_VIEW_END_MHZ));
 	private volatile List<FmStationHit>				fmStations							= List.of();
 	private final FmStationTracker					fmTracker							= new FmStationTracker();
 	private final SpectrumZoomHistory				spectrumZoomHistory					= new SpectrumZoomHistory();
@@ -183,60 +188,14 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private boolean									applyingSpectrumZoom;
 	private boolean									spectrumZoomDragging;
 	private int										spectrumZoomAnchorX;
-
-	private ModelValue<FrequencyAllocationTable>	parameterFrequencyAllocationTable	= new ModelValue<FrequencyAllocationTable>(
-			"Frequency allocation table", null);
-
-	private ModelValueInt							parameterGainLNA					= new ModelValueInt("LNA Gain",
-			0, 8, 0, 40);
-	private ModelValueInt							parameterGainTotal					= new ModelValueInt("Gain [dB]",
-			40);
-	private ModelValueInt							parameterGainVGA					= new ModelValueInt("VGA Gain",
-			0, 2, 0, 60);
-	private ModelValueBoolean						parameterIsCapturingPaused			= new ModelValueBoolean(
-			"Capturing paused", false);
-	private ModelValue<RadioIdentity>				parameterRadioIdentity				= new ModelValue<>(
-			"Radio", RadioIdentity.ABSENT);
-	private ModelValue<String>						parameterSelectedSerial				= new ModelValue<>(
-			"Serial", "");
-	private ModelValueBoolean						parameterClkoutEnable				= new ModelValueBoolean(
-			"CLKOUT", false);
-	private ModelValueBoolean						parameterRadioReleased				= new ModelValueBoolean(
-			"Radio released", false);
-
-	private ModelValueInt							parameterPersistentDisplayPersTime 		= new ModelValueInt("Persistence time", 30, 1, 1, 60);
-	private ModelValueInt							parameterPeakFallRateSecs			= new ModelValueInt(
-			"Peak fall rate", 15);
-	private ModelValueBoolean						parameterPersistentDisplay			= new ModelValueBoolean(
-			"Persistent display", true);
-
-	private ModelValueInt							parameterSamples					= new ModelValueInt("Samples",
-			8192);
-
-	private ModelValueBoolean						parameterShowPeaks					= new ModelValueBoolean(
-			"Show peaks", true);
-	private ModelValueBoolean						parameterPowerAutoScale				= new ModelValueBoolean(
-			"Auto-scale dB axis", false);
-
-	private ModelValueBoolean 						parameterDebugDisplay				= new ModelValueBoolean("Debug", false);
-	
-	private ModelValue<BigDecimal>					parameterSpectrumLineThickness		= new ModelValue<>(
-			"Spectrum line thickness", new BigDecimal("1"));
-	private ModelValueInt							parameterSpectrumPaletteSize		= new ModelValueInt(
-			"Spectrum palette size", 0);
-	private ModelValueInt							parameterSpectrumPaletteStart		= new ModelValueInt(
-			"Spectrum palette start", 0);
-
-	private ModelValueBoolean						parameterSpurRemoval				= new ModelValueBoolean(
-			"Spur removal", false);
-	private ModelValueBoolean						parameterWaterfallVisible			= new ModelValueBoolean(
-			"Waterfall visible", true);
 	private PersistentDisplay						persistentDisplay					= new PersistentDisplay();
 	private float									spectrumInitValue					= -150;
 	private SpurFilter								spurFilter;
 	private SpectrumSweepEngine						sweepEngine;
 	private Thread									threadHackrfSweep;
 	private ArrayBlockingQueue<Integer>				threadLaunchCommands				= new ArrayBlockingQueue<>(1);
+	private final javax.swing.Timer					radioApplyTimer					= new javax.swing.Timer(
+			SweepConfig.FREQUENCY_APPLY_DEBOUNCE_MS, e -> restartHackrfSweep());
 	private Thread									threadLauncher;
 	private Thread									threadProcessing;
 	private TextTitle								titleFreqBand						= new TextTitle("",
@@ -252,18 +211,47 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	public HackRFSweepSpectrumAnalyzer() {
 		jspectrumanalyzer.ui.AnalyzerLookAndFeel.install();
 		printInit(0);
+		settings.setHardware(new AnalyzerSettings.Hardware() {
+			@Override
+			public void restartSweep() {
+				radioApplyTimer.stop();
+				restartHackrfSweep();
+			}
+
+			@Override
+			public void releaseRadio() {
+				radioApplyTimer.stop();
+				forceStopSweep = true;
+				if (sweepEngine != null)
+					sweepEngine.requestStop();
+				HackRFSweepNativeBridge.stop();
+				if (threadHackrfSweep != null) {
+					try {
+						threadHackrfSweep.join(2000);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+				}
+				refreshRadioIdentity();
+			}
+
+			@Override
+			public java.util.List<String> listRadioSerials() {
+				return HackRFDeviceQuery.listSerials();
+			}
+		});
 
 		if (captureGIF) {
-//			parameterFrequency.setValue(new FrequencyRange(700, 2700));
-			parameterFrequency.setValue(new FrequencyRange(2400, 2700));
-			parameterGainTotal.setValue(60);
-			parameterSpurRemoval.setValue(true);
-			parameterPersistentDisplay.setValue(true);
-			parameterFFTBinHz.setValue(500000);
-			parameterFrequencyAllocationTable.setValue(new FrequencyAllocations().getTable().values().stream().findFirst().get());
+//			settings.getFrequency().setValue(new FrequencyRange(700, 2700));
+			settings.getFrequency().setValue(new FrequencyRange(2400, 2700));
+			settings.getGain().setValue(60);
+			settings.isSpurRemoval().setValue(true);
+			settings.isPersistentDisplayVisible().setValue(true);
+			settings.getFFTBinHz().setValue(500000);
+			settings.getFrequencyAllocationTable().setValue(new FrequencyAllocations().getTable().values().stream().findFirst().get());
 		}
 
-		recalculateGains(parameterGainTotal.getValue());
+		recalculateGains(settings.getGain().getValue());
 
 		setupChart();
 
@@ -282,7 +270,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		printInit(2);
 
 		refreshRadioIdentity();
-		HackRFSweepSettingsUI settingsPanel = new HackRFSweepSettingsUI(this);
+		HackRFSweepSettingsUI settingsPanel = new HackRFSweepSettingsUI(settings);
 
 		printInit(3);
 		
@@ -293,10 +281,10 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 		labelMessages = new JLabel("dsadasd");
 		labelMessages.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-		parameterDebugDisplay.addListener((debug) -> {
+		settings.isDebugDisplay().addListener((debug) -> {
 			labelMessages.setVisible(debug);
 		});
-		parameterDebugDisplay.callObservers();
+		settings.isDebugDisplay().callObservers();
 		
 		JPanel splitPanePanel	= new JPanel(new BorderLayout());
 		splitPanePanel.add(splitPane, BorderLayout.CENTER);
@@ -306,7 +294,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		uiFrame.setUndecorated(captureGIF);
 		uiFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		uiFrame.setLayout(new BorderLayout());
-		RadioIdentity bootId = parameterRadioIdentity.getValue();
+		RadioIdentity bootId = settings.getRadioIdentity().getValue();
 		uiFrame.setTitle(bootId != null && bootId.present
 				? "Spectrum Analyzer — " + bootId.displayBoard()
 				: "Spectrum Analyzer");
@@ -337,7 +325,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 		printInit(6);
 
-		sweepEngine = new SpectrumSweepEngine(this, spectrumInitValue, new SweepUiHooks());
+		sweepEngine = new SpectrumSweepEngine(settings, spectrumInitValue, new SweepUiHooks());
+		radioApplyTimer.setRepeats(false);
 		startLauncherThread();
 		restartHackrfSweep();
 
@@ -360,160 +349,175 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 	@Override
 	public ModelValueBoolean getAntennaPowerEnable() {
-		return parameterAntPower;
+		return settings.getAntennaPowerEnable();
 	}
 
 	@Override
 	public ModelValueBoolean getAntennaLNA() {
-		return parameterAntennaLNA;
+		return settings.getAntennaLNA();
 	}
 
 	@Override
 	public ModelValueInt getFFTBinHz() {
-		return parameterFFTBinHz;
+		return settings.getFFTBinHz();
 	}
 
 	@Override
 	public ModelValue<FrequencyRange> getFrequency() {
-		return parameterFrequency;
+		return settings.getFrequency();
 	}
 
 	@Override
 	public ModelValue<FrequencyAllocationTable> getFrequencyAllocationTable() {
-		return parameterFrequencyAllocationTable;
+		return settings.getFrequencyAllocationTable();
 	}
 
 	@Override
 	public ModelValueInt getGain() {
-		return parameterGainTotal;
+		return settings.getGain();
 	}
 
 	@Override
 	public ModelValueInt getGainLNA() {
-		return parameterGainLNA;
+		return settings.getGainLNA();
 	}
 
 	@Override
 	public ModelValueInt getGainVGA() {
-		return parameterGainVGA;
+		return settings.getGainVGA();
 	}
 
 	@Override
 	public ModelValueInt getPeakFallRate() {
-		return parameterPeakFallRateSecs;
+		return settings.getPeakFallRate();
 	}
 
 	@Override
 	public ModelValueInt getSamples() {
-		return parameterSamples;
+		return settings.getSamples();
 	}
 
 	@Override
 	public ModelValue<BigDecimal> getSpectrumLineThickness() {
-		return parameterSpectrumLineThickness;
+		return settings.getSpectrumLineThickness();
 	}
 	
 	@Override
 	public ModelValueInt getPersistentDisplayDecayRate() {
-		return parameterPersistentDisplayPersTime;
+		return settings.getPersistentDisplayDecayRate();
 	}
 
 	@Override
 	public ModelValueInt getSpectrumPaletteSize() {
-		return parameterSpectrumPaletteSize;
+		return settings.getSpectrumPaletteSize();
 	}
 
 	@Override
 	public ModelValueInt getSpectrumPaletteStart() {
-		return parameterSpectrumPaletteStart;
+		return settings.getSpectrumPaletteStart();
 	}
 
 	@Override
 	public ModelValueBoolean isCapturingPaused() {
-		return parameterIsCapturingPaused;
+		return settings.isCapturingPaused();
 	}
 
 	@Override
 	public ModelValue<RadioIdentity> getRadioIdentity() {
-		return parameterRadioIdentity;
+		return settings.getRadioIdentity();
 	}
 
 	@Override
 	public ModelValue<String> getSelectedSerial() {
-		return parameterSelectedSerial;
+		return settings.getSelectedSerial();
 	}
 
 	@Override
 	public ModelValueBoolean getClkoutEnable() {
-		return parameterClkoutEnable;
+		return settings.getClkoutEnable();
 	}
 
 	@Override
 	public ModelValueBoolean isRadioReleased() {
-		return parameterRadioReleased;
+		return settings.isRadioReleased();
+	}
+
+	public jspectrumanalyzer.mcp.SpectrumSnapshotStore snapshotStore() {
+		return snapshotStore;
+	}
+
+	public void startMcpTcp(int port) {
+		try {
+			if (mcpServer == null)
+				mcpServer = new jspectrumanalyzer.mcp.SpectrumMcpServer(snapshotStore);
+			mcpServer.startLocalhost(port);
+		} catch (java.io.IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void startMcpStdio() {
+		if (mcpServer == null)
+			mcpServer = new jspectrumanalyzer.mcp.SpectrumMcpServer(snapshotStore);
+		Thread t = new Thread(() -> {
+			try {
+				mcpServer.runStdio();
+			} catch (java.io.IOException e) {
+				e.printStackTrace();
+			}
+		}, "spectrum-mcp-stdio");
+		t.setDaemon(true);
+		t.start();
 	}
 
 	@Override
 	public void restartSweep() {
-		parameterRadioReleased.setValue(false);
-		restartHackrfSweep();
+		settings.restartSweep();
 	}
 
 	@Override
 	public void releaseRadio() {
-		parameterRadioReleased.setValue(true);
-		forceStopSweep = true;
-		if (sweepEngine != null)
-			sweepEngine.requestStop();
-		HackRFSweepNativeBridge.stop();
-		if (threadHackrfSweep != null) {
-			try {
-				threadHackrfSweep.join(2000);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-		}
-		refreshRadioIdentity();
+		settings.releaseRadio();
 	}
 
 	@Override
 	public java.util.List<String> listRadioSerials() {
-		return HackRFDeviceQuery.listSerials();
+		return settings.listRadioSerials();
 	}
 
 	@Override
 	public ModelValueBoolean isChartsPeaksVisible() {
-		return parameterShowPeaks;
+		return settings.isChartsPeaksVisible();
 	}
 
 	@Override
 	public ModelValueBoolean isPowerAutoScale() {
-		return parameterPowerAutoScale;
+		return settings.isPowerAutoScale();
 	}
 	
 	@Override
 	public ModelValueBoolean isDebugDisplay() {
-		return parameterDebugDisplay;
+		return settings.isDebugDisplay();
 	}
 
 	@Override
 	public ModelValueBoolean isFilterSpectrum() {
-		return parameterFilterSpectrum;
+		return settings.isFilterSpectrum();
 	}
 
 	@Override
 	public ModelValueBoolean isPersistentDisplayVisible() {
-		return parameterPersistentDisplay;
+		return settings.isPersistentDisplayVisible();
 	}
 
 	@Override
 	public ModelValueBoolean isSpurRemoval() {
-		return this.parameterSpurRemoval;
+		return this.settings.isSpurRemoval();
 	}
 
 	@Override
 	public ModelValueBoolean isWaterfallVisible() {
-		return parameterWaterfallVisible;
+		return settings.isWaterfallVisible();
 	}
 
 	@Override
@@ -526,12 +530,12 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 	@Override
 	public void registerListener(HackRFEventListener listener) {
-		hRFlisteners.add(listener);
+		settings.registerListener(listener);
 	}
 
 	@Override
 	public void removeListener(HackRFEventListener listener) {
-		hRFlisteners.remove(listener);
+		settings.removeListener(listener);
 	}
 
 	private static void applyAppIcons(JFrame frame) {
@@ -607,17 +611,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	}
 
 	private void fireCapturingStateChanged() {
-		SwingUtilities.invokeLater(() -> {
-			synchronized (hRFlisteners) {
-				for (HackRFEventListener hackRFEventListener : hRFlisteners) {
-					try {
-						hackRFEventListener.captureStateChanged(!parameterIsCapturingPaused.getValue());
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-			}
-		});
+		SwingUtilities.invokeLater(() -> settings.fireCaptureStateChanged(!settings.isCapturingPaused().getValue()));
 	}
 
 	private void refreshRadioIdentity() {
@@ -627,7 +621,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		} catch (Throwable t) {
 			identity = RadioIdentity.ABSENT;
 		}
-		parameterRadioIdentity.setValue(identity);
+		settings.getRadioIdentity().setValue(identity);
 		if (uiFrame != null) {
 			String title = identity.present ? "Spectrum Analyzer — " + identity.displayBoard() : "Spectrum Analyzer";
 			final String frameTitle = title;
@@ -638,22 +632,12 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private void fireHardwareStateChanged(boolean sendingData) {
 		if (this.flagIsHWSendingData != sendingData) {
 			this.flagIsHWSendingData = sendingData;
-			SwingUtilities.invokeLater(() -> {
-				synchronized (hRFlisteners) {
-					for (HackRFEventListener hackRFEventListener : hRFlisteners) {
-						try {
-							hackRFEventListener.hardwareStatusChanged(sendingData);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				}
-			});
+			SwingUtilities.invokeLater(() -> settings.fireHardwareStatusChanged(sendingData));
 		}
 	}
 
 	private FrequencyRange getFreq() {
-		return parameterFrequency.getValue();
+		return settings.getFrequency().getValue();
 	}
 
 	private void printInit(int initNumber) {
@@ -675,17 +659,38 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 		@Override
 		public void onFirstDataset(DatasetSpectrumPeak ds, float fftBinHz) {
-			datasetSpectrum = ds;
-			fmTracker.reset();
-			fmStations = List.of();
-			powerScale = null;
+			// Keep the previous chart series until the first full sweep of the
+			// new window lands — assigning the −150 dB init buffer here made
+			// the plot flash a flat line during every retune.
 			spurFilter = sweepEngine.getSpurFilter();
-			chart.getXYPlot().getDomainAxis().setRange(getFreq().getStartMHz(), getFreq().getEndMHz());
+			final double start = getFreq().getStartMHz();
+			final double end = getFreq().getEndMHz();
+			SwingUtilities.invokeLater(() -> {
+				if (chart != null)
+					chart.getXYPlot().getDomainAxis().setRange(start, end);
+			});
 		}
 
 		@Override
 		public void onFullSweepProcessed(DatasetSpectrumPeak ds) {
+			boolean retuned = datasetSpectrum != ds;
 			datasetSpectrum = ds;
+			if (retuned) {
+				fmTracker.reset();
+				powerScale = null;
+				if (waterfallPlot != null)
+					waterfallPlot.clearHistory();
+			}
+			long nowMs = System.currentTimeMillis();
+			if (snapshotStore.shouldPublish(nowMs)) {
+				FrequencyRange live = getFreq();
+				java.util.List<FmStationHit> hits = fmTracker.update(ds, live.getStartMHz(), live.getEndMHz());
+				fmStations = hits;
+				snapshotStore.publishSweep(jspectrumanalyzer.mcp.SpectrumSnapshot.fromDataset(ds, nowMs,
+						jspectrumanalyzer.mcp.SpectrumSnapshot.DEFAULT_MAX_POINTS, null), nowMs);
+				double sps = waterfallPlot != null ? waterfallPlot.getFps() : 0;
+				snapshotStore.publishContext(settings, hits, sps);
+			}
 			synchronized (perfWatch) {
 				perfWatch.hwFullSpectrumRefreshes++;
 			}
@@ -712,12 +717,14 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				}
 			}
 
-			XYSeries spectrumSeries = datasetSpectrum.createSpectrumDataset("spectrum");
-			XYSeries spectrumPeaks = parameterShowPeaks.getValue() ? datasetSpectrum.createPeaksDataset("peaks")
+			int maxPts = chartVertexBudget();
+			XYSeries spectrumSeries = datasetSpectrum.createSpectrumDataset("spectrum", maxPts);
+			XYSeries spectrumPeaks = settings.isChartsPeaksVisible().getValue()
+					? datasetSpectrum.createPeaksDataset("peaks", maxPts)
 					: spectrumPeaksEmpty;
 			final double yLow;
 			final double yHigh;
-			if (parameterPowerAutoScale.getValue()) {
+			if (settings.isPowerAutoScale().getValue()) {
 				SpectrumPowerScale target = SpectrumPowerScale.fromDataset(datasetSpectrum);
 				long now = System.currentTimeMillis();
 				if (powerScale == null || powerScale.isUnset())
@@ -733,7 +740,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				yHigh = SpectrumPowerScale.DEFAULT_HIGH;
 			}
 
-			if (parameterPersistentDisplay.getValue()) {
+			if (settings.isPersistentDisplayVisible().getValue()) {
 				long start = System.nanoTime();
 				boolean redraw = frameCounterChart % limitPersistentRefreshEveryChartFrame == 0;
 				persistentDisplay.drawSpectrum2(datasetSpectrum, (float) yLow, (float) yHigh, redraw);
@@ -742,7 +749,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				}
 			}
 
-			if (parameterWaterfallVisible.getValue()) {
+			if (settings.isWaterfallVisible().getValue()) {
 				long start = System.nanoTime();
 				waterfallPlot.addNewData(datasetSpectrum);
 				synchronized (perfWatch) {
@@ -776,9 +783,9 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private void recalculateGains(int totalGain) {
 		int lnaGain = GainPolicy.lnaGain(totalGain);
 		int vgaGain = GainPolicy.vgaGain(totalGain);
-		this.parameterGainLNA.setValue(lnaGain);
-		this.parameterGainVGA.setValue(vgaGain);
-		this.parameterGainTotal.setValue(lnaGain + vgaGain);
+		this.settings.getGainLNA().setValue(lnaGain);
+		this.settings.getGainVGA().setValue(vgaGain);
+		this.settings.getGain().setValue(lnaGain + vgaGain);
 	}
 
 	/**
@@ -786,7 +793,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	 * is important, delete others
 	 */
 	private synchronized void restartHackrfSweep() {
-		if (parameterRadioReleased.getValue())
+		if (settings.isRadioReleased().getValue())
 			return;
 		if (threadLaunchCommands.offer(0) == false) {
 			threadLaunchCommands.clear();
@@ -794,11 +801,30 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		}
 	}
 
+	private void scheduleFrequencyRadioApply() {
+		if (settings.isRadioReleased().getValue())
+			return;
+		if (SwingUtilities.isEventDispatchThread())
+			radioApplyTimer.restart();
+		else
+			SwingUtilities.invokeLater(radioApplyTimer::restart);
+	}
+
+	private int chartVertexBudget() {
+		Rectangle2D area = chartDataArea.getValue();
+		if (area != null && area.getWidth() > 8)
+			return Math.max(256, (int) Math.round(area.getWidth()));
+		return 2048;
+	}
+
 	/**
 	 * no need to synchronize, executes only in the launcher thread
 	 */
 	private void restartHackrfSweepExecute() {
 		stopHackrfSweep();
+		if (!SweepConfig.shouldStartAfterStop(settings.isRadioReleased().getValue(),
+				threadLaunchCommands.peek() != null))
+			return;
 		threadHackrfSweep = new Thread(() -> {
 			Thread.currentThread().setName("hackrf_sweep");
 			try {
@@ -826,7 +852,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		NumberAxis rangeAxis = ((NumberAxis) plot.getRangeAxis());
 		chartLineRenderer = new XYLineAndShapeRenderer();
 		chartLineRenderer.setDefaultShapesVisible(false);
-		chartLineRenderer.setDefaultStroke(new BasicStroke(parameterSpectrumLineThickness.getValue().floatValue()));
+		chartLineRenderer.setDefaultStroke(new BasicStroke(settings.getSpectrumLineThickness().getValue().floatValue()));
 
 		rangeAxis.setAutoRange(false);
 		rangeAxis.setRange(SpectrumPowerScale.DEFAULT_LOW, SpectrumPowerScale.DEFAULT_HIGH);
@@ -1032,7 +1058,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				freqMarker.setValue(crosshairDomain);
 				freqMarker.setLabel(String.format("%.1fMHz", crosshairDomain));
 
-				FrequencyAllocationTable activeTable = parameterFrequencyAllocationTable.getValue();
+				FrequencyAllocationTable activeTable = settings.getFrequencyAllocationTable().getValue();
 				if (activeTable != null) {
 					FrequencyBand band = activeTable.lookupBand((long) (crosshairDomain * 1000000l));
 					if (band == null)
@@ -1174,7 +1200,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private void applySpectrumZoom(FrequencyRange next) {
 		applyingSpectrumZoom = true;
 		try {
-			parameterFrequency.setValue(next);
+			settings.getFrequency().setValue(next);
 		} finally {
 			applyingSpectrumZoom = false;
 		}
@@ -1195,37 +1221,37 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			});
 
 		});
-		parameterFrequencyAllocationTable.addListener(this::redrawFrequencySpectrumTable);
+		settings.getFrequencyAllocationTable().addListener(this::redrawFrequencySpectrumTable);
 	}
 
 	private void setupParameterObservers() {
 		Runnable restartHackrf = this::restartHackrfSweep;
-		parameterFrequency.addListener(restartHackrf);
-		parameterFrequency.addListener((range) -> {
+		settings.getFrequency().addListener(this::scheduleFrequencyRadioApply);
+		settings.getFrequency().addListener((range) -> {
 			if (chart != null)
 				chart.getXYPlot().getDomainAxis().setRange(range.getStartMHz(), range.getEndMHz());
 			if (!applyingSpectrumZoom)
 				spectrumZoomHistory.clear();
 		});
-		parameterAntPower.addListener(restartHackrf);
-		parameterAntennaLNA.addListener(restartHackrf);
-		parameterFFTBinHz.addListener(restartHackrf);
-		parameterSamples.addListener(restartHackrf);
-		parameterSelectedSerial.addListener(restartHackrf);
-		parameterClkoutEnable.addListener(restartHackrf);
-		parameterIsCapturingPaused.addListener(this::fireCapturingStateChanged);
+		settings.getAntennaPowerEnable().addListener(restartHackrf);
+		settings.getAntennaLNA().addListener(restartHackrf);
+		settings.getFFTBinHz().addListener(restartHackrf);
+		settings.getSamples().addListener(restartHackrf);
+		settings.getSelectedSerial().addListener(restartHackrf);
+		settings.getClkoutEnable().addListener(restartHackrf);
+		settings.isCapturingPaused().addListener(this::fireCapturingStateChanged);
 
-		parameterGainTotal.addListener((gainTotal) -> {
+		settings.getGain().addListener((gainTotal) -> {
 			if (flagManualGain) //flag is being adjusted manually by LNA or VGA, do not recalculate the gains
 				return;
 			recalculateGains(gainTotal);
 			restartHackrfSweep();
 		});
 		Runnable gainRecalc = () -> {
-			int totalGain = parameterGainLNA.getValue() + parameterGainVGA.getValue();
+			int totalGain = settings.getGainLNA().getValue() + settings.getGainVGA().getValue();
 			flagManualGain = true;
 			try {
-				parameterGainTotal.setValue(totalGain);
+				settings.getGain().setValue(totalGain);
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
@@ -1233,22 +1259,22 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			}
 			restartHackrfSweep();
 		};
-		parameterGainLNA.addListener(gainRecalc);
-		parameterGainVGA.addListener(gainRecalc);
+		settings.getGainLNA().addListener(gainRecalc);
+		settings.getGainVGA().addListener(gainRecalc);
 
-		parameterSpurRemoval.addListener(() -> {
+		settings.isSpurRemoval().addListener(() -> {
 			SpurFilter filter = spurFilter;
 			if (filter != null) {
 				filter.recalibrate();
 			}
 		});
-		parameterShowPeaks.addListener(() -> {
+		settings.isChartsPeaksVisible().addListener(() -> {
 			DatasetSpectrumPeak p = datasetSpectrum;
 			if (p != null) {
 				p.resetPeaks();
 			}
 		});
-		parameterPowerAutoScale.addListener((enabled) -> {
+		settings.isPowerAutoScale().addListener((enabled) -> {
 			SwingUtilities.invokeLater(() -> {
 				if (chart == null || enabled)
 					return;
@@ -1256,9 +1282,9 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 						SpectrumPowerScale.DEFAULT_HIGH);
 			});
 		});
-		parameterSpectrumPaletteStart.setValue((int) waterfallPlot.getSpectrumPaletteStart());
-		parameterSpectrumPaletteSize.setValue((int) waterfallPlot.getSpectrumPaletteSize());
-		parameterSpectrumPaletteStart.addListener((dB) -> {
+		settings.getSpectrumPaletteStart().setValue((int) waterfallPlot.getSpectrumPaletteStart());
+		settings.getSpectrumPaletteSize().setValue((int) waterfallPlot.getSpectrumPaletteSize());
+		settings.getSpectrumPaletteStart().addListener((dB) -> {
 			waterfallPlot.setSpectrumPaletteStart(dB);
 			SwingUtilities.invokeLater(() -> {
 				waterfallPaletteStartMarker.setValue(waterfallPlot.getSpectrumPaletteStart());
@@ -1266,7 +1292,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 						.setValue(waterfallPlot.getSpectrumPaletteStart() + waterfallPlot.getSpectrumPaletteSize());
 			});
 		});
-		parameterSpectrumPaletteSize.addListener((dB) -> {
+		settings.getSpectrumPaletteSize().addListener((dB) -> {
 			if (dB < SPECTRUM_PALETTE_SIZE_MIN)
 				return;
 			waterfallPlot.setSpectrumPaletteSize(dB);
@@ -1277,29 +1303,29 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			});
 
 		});
-		parameterPeakFallRateSecs.addListener((fallRate) -> {
+		settings.getPeakFallRate().addListener((fallRate) -> {
 			datasetSpectrum.setPeakFalloutMillis(fallRate * 1000l);
 		});
 
-		parameterSpectrumLineThickness.addListener((thickness) -> {
+		settings.getSpectrumLineThickness().addListener((thickness) -> {
 			SwingUtilities.invokeLater(() -> chartLineRenderer.setDefaultStroke(new BasicStroke(thickness.floatValue())));
 		});
 		
-		parameterPersistentDisplayPersTime.addListener((time) -> {
+		settings.getPersistentDisplayDecayRate().addListener((time) -> {
 			persistentDisplay.setPersistenceTime(time);
 		});
 
 		int persistentDisplayDownscaleFactor = 4;
 
 		Runnable resetPersistentImage = () -> {
-			boolean display = parameterPersistentDisplay.getValue();
+			boolean display = settings.isPersistentDisplayVisible().getValue();
 			persistentDisplay.reset();
 			chart.getXYPlot().setBackgroundImage(display ? persistentDisplay.getDisplayImage().getValue() : null);
 			chart.getXYPlot().setBackgroundImageAlpha(alphaPersistentDisplayImage);
 		};
 		persistentDisplay.getDisplayImage().addListener((image) -> {
 			SwingUtilities.invokeLater(() -> {
-				if (parameterPersistentDisplay.getValue())
+				if (settings.isPersistentDisplayVisible().getValue())
 					chart.getXYPlot().setBackgroundImage(image);
 			});
 		});
@@ -1308,14 +1334,14 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			@Override
 			public void hardwareStatusChanged(boolean hardwareSendingData) {
 				SwingUtilities.invokeLater(() -> {
-					if (hardwareSendingData && parameterPersistentDisplay.getValue()) {
+					if (hardwareSendingData && settings.isPersistentDisplayVisible().getValue()) {
 						resetPersistentImage.run();
 					}
 				});
 			}
 		});
 
-		parameterPersistentDisplay.addListener((display) -> {
+		settings.isPersistentDisplayVisible().addListener((display) -> {
 			SwingUtilities.invokeLater(resetPersistentImage::run);
 		});
 
@@ -1332,7 +1358,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				 */
 				persistentDisplay.setImageSize((int) area.getWidth() / persistentDisplayDownscaleFactor,
 						(int) area.getWidth() / persistentDisplayDownscaleFactor);
-				if (parameterPersistentDisplay.getValue()) {
+				if (settings.isPersistentDisplayVisible().getValue()) {
 					chart.getXYPlot().setBackgroundImage(persistentDisplay.getDisplayImage().getValue());
 					chart.getXYPlot().setBackgroundImageAlpha(alphaPersistentDisplayImage);
 				}
@@ -1405,9 +1431,9 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			System.out.println(
 					"Starting sweep... " + getFreq().getStartMHz() + "-" + getFreq().getEndMHz() + "MHz ");
 			System.out.println("sweep params:  freq " + getFreq().getStartMHz() + "-" + getFreq().getEndMHz()
-					+ "MHz  FFTBin " + parameterFFTBinHz.getValue() + "Hz  samples " + parameterSamples.getValue()
-					+ "  lna: " + parameterGainLNA.getValue() + " vga: " + parameterGainVGA.getValue() + " antPwr:"
-					+ parameterAntPower.getValue() + " antLNA:" + parameterAntennaLNA.getValue());
+					+ "MHz  FFTBin " + settings.getFFTBinHz().getValue() + "Hz  samples " + settings.getSamples().getValue()
+					+ "  lna: " + settings.getGainLNA().getValue() + " vga: " + settings.getGainVGA().getValue() + " antPwr:"
+					+ settings.getAntennaPowerEnable().getValue() + " antLNA:" + settings.getAntennaLNA().getValue());
 			fireHardwareStateChanged(false);
 			sweepEngine.runSweepLoop();
 			fireHardwareStateChanged(false);
@@ -1419,7 +1445,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 	protected void redrawFrequencySpectrumTable() {
 		Rectangle2D area = chartPanel.getChartRenderingInfo().getPlotInfo().getDataArea();
-		FrequencyAllocationTable activeTable = parameterFrequencyAllocationTable.getValue();
+		FrequencyAllocationTable activeTable = settings.getFrequencyAllocationTable().getValue();
 		if (activeTable == null) {
 			imageFrequencyAllocationTableBands = null;
 		} else if (area.getWidth() > 0 && area.getHeight() > 0) {

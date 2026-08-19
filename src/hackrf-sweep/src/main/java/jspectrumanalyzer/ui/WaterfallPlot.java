@@ -246,6 +246,20 @@ public class WaterfallPlot extends JPanel {
 		return fps.getEma();
 	}
 
+	/** Drop scrolled history (used on retune so old MHz mapping is not reused). */
+	public synchronized void clearHistory() {
+		for (BufferedImage image : bufferedImages) {
+			if (image == null)
+				continue;
+			Graphics2D g = image.createGraphics();
+			g.setColor(Color.black);
+			g.fillRect(0, 0, image.getWidth(), image.getHeight());
+			g.dispose();
+		}
+		lastSpectrum = null;
+		lastBinCount = 0;
+	}
+
 	public synchronized void setHistorySize(int historyInPixels) {
 		BufferedImage bufferedImages[] = new BufferedImage[2];
 		bufferedImages[0] = GraphicsToolkit.createAcceleratedImageOpaque(screenWidth, historyInPixels);
@@ -301,13 +315,9 @@ public class WaterfallPlot extends JPanel {
 	public static double translateXToFrequency(int x, int chartWidth, double startFreqHz, double stopFreqHz) {
 		if (chartWidth <= 0)
 			return -1;
-		double freqRange = (stopFreqHz - startFreqHz);
-		double freq = (x / (double) chartWidth) * freqRange + startFreqHz;
-		if (freq > stopFreqHz)
-			freq = stopFreqHz;
-		if (freq < startFreqHz)
-			freq = startFreqHz;
-		return freq;
+		jspectrumanalyzer.core.FrequencyAxis axis = jspectrumanalyzer.core.FrequencyAxis.of(startFreqHz / 1_000_000d,
+				stopFreqHz / 1_000_000d, chartWidth);
+		return axis.xToMhz(x) * 1_000_000d;
 	}
 
 	private double translateChartXToFrequency(int x) {

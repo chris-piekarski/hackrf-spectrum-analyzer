@@ -8,7 +8,7 @@ This directory contains the first-class documentation for the **hackrf-spectrum-
 - [Building & Running](building.md)
 - [Development Guide](development.md) (including testing and linting)
 - [HackRF Hardware Setup](hackrf-setup.md)
-- [Usage](usage.md)
+- [Usage](usage.md) — includes MCP (`make mcp`) for local agents
 - [Architecture](architecture.md)
 - [Repository stats](stats.md) — first-party LOC, packages, tests (`make stats`)
 - [Contributing](contributing.md)

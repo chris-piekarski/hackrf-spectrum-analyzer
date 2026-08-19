@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Opt-in MCP server (`make mcp` / `--mcp`) so local agents can read `spectrum_summary`, `spectrum_snapshot`, `radio_identity`, `sweep_config`, and `fm_stations` from the same JVM that holds the radio. Snapshots omit hop holes and are sampled at ≤10 Hz. Stdio proxy: `scripts/mcp-spectrum-proxy.py`.
+- README status badges: Java 21, HackRF SDK v2026.01.3, min firmware, Linux|Windows, last commit.
+- `FrequencyAxis`, `BandMark` layers, and a shared `BandHeaderPainter` so Wi-Fi / FM / Quick Select overlays share one MHz↔pixel map and header. `AnalyzerSettings` owns all `HackRFSettings` model values (radio vs display) so the analyzer frame no longer stores them.
 - Spectrum plot Grafana-style frequency zoom: drag a span to zoom in (retunes the sweep), double-click or scroll down to zoom out, scroll up to zoom around the cursor. Start/end digits follow. Quick Select resets the zoom stack. Zoomed out past a single preset, Quick Select ranges are drawn as labeled vertical bands.
 - FM overlay labels **live** sweep peaks as US station frequencies (e.g. **97.3**): local maxima ≥ 8 dB above the noise floor, snapped to the 47 CFR 73.201 200 kHz dial. A tracker raises confidence over ~0.4 s of repeated hits and holds the label ~1–2 s after the peak drops so IDs are readable. Empty channels are not marked.
 - Hardware strip: **Restart** (re-open the sweep), **Stop** (release USB), radio serial picker, and **CLKOUT 10 MHz**. Pause still only freezes the plot.
@@ -36,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved RBW / FFT bins / fps / peak power off the waterfall HUD into a full-width status bar with readable labels (Resolution, FFT bins, Waterfall rate, Peak).
 
 ### Fixed
+- Frequency zoom / Quick Select keep the last sweep on screen and debounce the radio apply (~120 ms) so a wheel flick is one USB restart, not one per tick. Chart series skip −150 dB hop holes and downsample to the plot width. Domain-axis updates run on the EDT.
 - Spectrum dB axis default is the fixed **−100…+20** window (10 dB ticks). Optional **Auto-scale dB axis** under Chart options fits the live band (20 dB pad, edges locked to multiples of 10). Hop holes at −150 dB are ignored. Live follow holds through wobble and bursty peaks, expands only when a signal would clip, and shrinks at most one 10 dB tick every 3 s if that whole window stayed quiet.
 - Narrow sweep windows (FM 88–108 is one 20 MHz hop) finished 400+ sweeps/s and flooded the waterfall plus Swing updates, so the plot looked frozen. Display work is capped at 30 fps; the radio still sweeps at full rate.
 - Quick Select hover is an in-panel range line (`2402–2472 MHz`), not Swing/X11 tooltip windows. Moving to another button replaces the same line; unit tests dispatch enter/exit and assert a single hint.

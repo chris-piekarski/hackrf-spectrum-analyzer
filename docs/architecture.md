@@ -7,13 +7,17 @@ flowchart TD
     subgraph JavaApp["Java Application (Swing)"]
         UI["UI Layer<br/>Waterfall, Charts, Settings, Quick Select"]
         Core["Core DSP Layer<br/>SpurFilter, PersistentDisplay,<br/>DatasetSpectrum*, EMA, Allocations"]
+        MCP["MCP snapshot store"]
     end
 
     NativeBridge["Native Bridge (JNA)"]
     NativeLib["Native sweep library<br/>(libhackrf-sweep.so / .dll)"]
     HackRF["libhackrf + USB (libusb)"]
+    Agent["Local MCP client"]
 
     UI --> Core
+    MCP --> Core
+    Agent --> MCP
     Core --> NativeBridge
     NativeBridge --> NativeLib
     NativeLib --> HackRF
@@ -24,6 +28,8 @@ flowchart TD
 ### Core DSP (`jspectrumanalyzer/core/`)
 - `DatasetSpectrum`, `DatasetSpectrumPeak`
 - `SpectrumSweepEngine`, `SpurFilter`, `PersistentDisplay`
+- `AnalyzerSettings` (all `HackRFSettings` model values; radio vs display)
+- `FrequencyAxis`, `BandMark`, `WifiBandLayer`, `FmBandLayer` (plot overlays do not invent their own MHz↔pixel map)
 - `EMA`, `FFTBins`, `PowerCalibration`, `RadioIdentity`
 - Frequency allocation tables
 
@@ -36,7 +42,7 @@ These are the best candidates for unit testing (and have the majority of our tes
 
 ### UI Layer
 - Swing + FlatLaf + JFreeChart.
-- `WaterfallPlot`, `HackRFSweepSettingsUI`, Quick Select (`QuickSelectPreset`), `SweepStatusBar`, radio identity (board / serial / firmware). Spectrum overlays: Wi-Fi 20 MHz channels (`WifiChannelOverlay`) and live US FM stations (`FmChannelPlan.detectStations` + `FmStationTracker` + `FmChannelOverlay`). Frequency zoom (`SpectrumZoom` + `SpectrumZoomHistory`) retunes the sweep like a Grafana time-range drag. When the view is wider than one preset, `QuickSelectBandOverlay` draws those Quick Select ranges as labeled bands.
+- `WaterfallPlot`, `HackRFSweepSettingsUI`, Quick Select (`QuickSelectPreset`), `SweepStatusBar`, radio identity (board / serial / firmware). Spectrum overlays share `FrequencyAxis` + `BandHeaderPainter`: Wi-Fi (`WifiBandLayer`), live US FM (`FmBandLayer` + `FmStationTracker`), and zoomed-out Quick Select (`QuickSelectBandLayer`). Frequency zoom (`SpectrumZoom` + `SpectrumZoomHistory`) retunes the sweep like a Grafana time-range drag.
 
 ### Build System
 - Root `Makefile` — convenience targets (`make help`, `make test`, `make start`, etc.).
@@ -59,12 +65,14 @@ sequenceDiagram
     participant Engine as SpectrumSweepEngine
     participant DSP as Core DSP
     participant UI as Charts and waterfall
+    participant MCP as MCP snapshot store
 
     Native->>Bridge: FFT power batches
     Bridge->>Analyzer: newSpectrumData
     Analyzer->>Engine: accept bins
     Engine->>DSP: filter peaks persist
     Engine->>UI: hooks update displays
+    Engine->>MCP: snapshot store copy
 ```
 
 ## Testing Strategy

@@ -212,6 +212,9 @@ udev: ## Install persistent udev rules (sudo once)
 start: build ## Build (if needed) then start the Linux app (assumes build artifacts present)
 	./build/hackrf-spectrum-analyzer/hackrf_sweep_spectrum_analyzer_linux.sh
 
+mcp: build ## Start the app and listen for MCP on 127.0.0.1:8765
+	./build/hackrf-spectrum-analyzer/hackrf_sweep_spectrum_analyzer_linux.sh --mcp
+
 run: start ## Alias for 'start'
 
 build: all ## Alias for the default build target

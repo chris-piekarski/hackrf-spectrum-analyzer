@@ -45,7 +45,7 @@ make test
 # open src/hackrf-sweep/target/site/jacoco/index.html
 ```
 
-**Guideline**: New logic in `jspectrumanalyzer/core/` should come with unit tests. Use synthetic `DatasetSpectrum` / `FFTBins` data. Reflection is acceptable for controlling time-based or internal graphics state in `PersistentDisplay` and `DatasetSpectrumPeak`.
+**Guideline**: New logic in `jspectrumanalyzer/core/` should come with unit tests. Use synthetic `DatasetSpectrum` / `FFTBins` data. Settings belong on `AnalyzerSettings` (test without a JFrame). Overlay policy belongs on `FrequencyAxis` / `BandMark` layers (test without painting). Reflection is acceptable for controlling time-based or internal graphics state in `PersistentDisplay` and `DatasetSpectrumPeak`.
 
 ### Test → Coverage Workflow
 

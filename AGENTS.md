@@ -104,6 +104,9 @@ Root-level files:
 ### Adding Features
 
 - Core DSP changes (SpurFilter, peaks, spectrum datasets, etc.) **must** have corresponding unit tests.
+- Operator settings live in `AnalyzerSettings` (implements `HackRFSettings`). Do not add new `ModelValue` fields on the analyzer JFrame. Mark radio vs display via `isRadioSetting`.
+- Plot overlays go through `FrequencyAxis` + `BandMark` + `BandHeaderPainter`. Do not invent a second MHz↔pixel map.
+- Live agent access is `jspectrumanalyzer.mcp.SpectrumSnapshotStore`, updated from `onFullSweepProcessed`. MCP tools are read-only; do not restart USB from a snapshot tool. Start with `--mcp` / `make mcp` (localhost 8765).
 - UI changes should be accompanied by updates to `docs/usage.md`.
 - New Makefile targets must be added to both the root `Makefile` and the detailed `src/hackrf-sweep/Makefile`, with proper `##` descriptions for `make help`.
 - When touching native code, ensure the patch in `src-c/` and build process still work.

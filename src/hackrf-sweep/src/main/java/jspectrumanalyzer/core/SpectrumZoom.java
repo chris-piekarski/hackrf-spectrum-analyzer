@@ -81,11 +81,6 @@ public final class SpectrumZoom
 
 	static double pixelToMHz(double pixelX, Rectangle2D area, double axisStartMHz, double axisEndMHz)
 	{
-		double u = (pixelX - area.getMinX()) / area.getWidth();
-		if (u < 0)
-			u = 0;
-		if (u > 1)
-			u = 1;
-		return axisStartMHz + u * (axisEndMHz - axisStartMHz);
+		return FrequencyAxis.fromArea(area, axisStartMHz, axisEndMHz).xToMhz(pixelX);
 	}
 }
