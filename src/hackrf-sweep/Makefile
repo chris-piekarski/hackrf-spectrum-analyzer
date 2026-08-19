@@ -178,7 +178,7 @@ clean: ## Clean all build artifacts (mvn + obj + build dirs)
 	rm -rf $(OUTPUT_DLL_DIR) $(BUILD_PATH) $(OUTPUT_PATH)/* bin/*
 
 ##@ Test & Quality
-.PHONY: test test-hw lint info list-devices
+.PHONY: test test-hw lint stats mermaid info list-devices
 test: ## Run unit tests via Maven (in subdir context)
 	mvn clean test
 
@@ -187,6 +187,12 @@ test-hw: ## Hardware ITs (@Tag hardware / *IT). Skips if no HackRF USB device.
 
 lint: ## Run compile/lint checks via Maven (basic quality gate)
 	mvn clean compile
+
+stats: ## Refresh docs/stats.md (first-party LOC, packages, tests, git)
+	@python3 $(abspath $(CURDIR)/../../scripts/repo-stats.py)
+
+mermaid: ## Parse-check first-party Mermaid diagrams (uses mmdc if installed)
+	@$(abspath $(CURDIR)/../../scripts/check-mermaid.sh)
 
 ##@ Hardware
 .PHONY: info list-devices firmware-update udev

@@ -1,94 +1,91 @@
-# Spectrum Analyzer GUI for hackrf_sweep
+# Spectrum Analyzer
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-A focused, high-performance spectrum analyzer GUI for the HackRF One.
+Live spectrum and waterfall for a HackRF on the USB port.
 
-![screenshot](screenshot.gif)
+![HackRF Spectrum Analyzer](screenshot.png)
 
 This is a maintained fork of [pavsa/hackrf-spectrum-analyzer](https://github.com/pavsa/hackrf-spectrum-analyzer) with:
 
-- **Quick Select** frequency band buttons (WiFi, LTE, FM, HF/VHF/UHF, TV, NFC, etc.)
-- Significantly expanded unit test coverage on the core DSP logic
-- Modernized build system with convenient `make` targets
-- Support for the HackRF Antenna LNA (+14 dB)
+- **Quick Select** buttons for common bands (Wi‑Fi, LTE, FM, TV, NFC, amateur 6m/2m/70cm/33cm)
+- Unit tests on the signal-processing path
+- A `make`-driven build (`make help`, `make start`, `make test`)
+- Antenna LNA (+14 dB) control
 
-## Features
+## What it does
 
-- Optimized exclusively for using a HackRF as a spectrum analyzer
-- All parameter changes automatically restart the sweep
-- Peak hold, persistent display, and high-resolution waterfall
-- Spur filter
-- EU + USA frequency allocation overlays
-- Antenna power (bias tee) and LNA amplifier control
-- `hackrf_sweep` integrated as a shared library for performance
+- Sweeps a frequency range and draws the live spectrum plus a waterfall
+- Changing a setting retunes automatically
+- Peak hold, persistent display, spur filter
+- EU and USA allocation overlays
+- Bias-tee (antenna power) and the onboard +14 dB LNA
+- Shows the attached radio’s board, serial, and firmware in the sidebar
 
 ## Quick Start
 
 ```bash
 git clone --recurse-submodules https://github.com/chris-piekarski/hackrf-spectrum-analyzer.git
 cd hackrf-spectrum-analyzer
-make help          # See all available commands
-make deps          # Install build dependencies (Ubuntu/Debian recommended)
-make start         # Build (if needed) + launch the Linux app
+make help          # all commands
+make deps          # Ubuntu/Debian build packages
+make start         # build if needed, then launch
 ```
 
-See the [documentation](docs/) for full details.
+Plug in the radio first. On Linux, run `make udev` once so the USB device stays writable. Full walkthrough: [docs/getting-started.md](docs/getting-started.md).
 
-### High-Level Architecture
+### How it is put together
 
 ```mermaid
 flowchart TD
-    subgraph App["Java + Swing"]
-        Core["Core DSP<br/>(well tested)"]
-        UI["UI Layer"]
+    subgraph App["Desktop app"]
+        Core["Signal processing"]
+        UI["Spectrum + waterfall"]
     end
-    Native["Native hackrf_sweep (JNA)"] --> HackRF["HackRF USB"]
+    Native["Native sweep library"] --> Radio["Radio on USB"]
     Core --> Native
     UI --> Core
 ```
 
 ## Documentation
 
-All detailed documentation lives under the `docs/` directory:
-
 - [Getting Started](docs/getting-started.md)
-- [Building](docs/building.md) (including the excellent `make help`)
+- [Building](docs/building.md)
 - [Development & Testing](docs/development.md)
-- [HackRF Hardware Setup](docs/hackrf-setup.md) (udev, firmware, drivers)
-- [Usage & Features](docs/usage.md)
+- [Radio setup](docs/hackrf-setup.md) (udev, firmware, Windows drivers)
+- [Usage](docs/usage.md)
 - [Architecture](docs/architecture.md)
+- [Repository stats](docs/stats.md) (`make stats`)
 - [Contributing](docs/contributing.md)
 
 ## Requirements
 
-- HackRF One with firmware **v2024.02.1** or newer (strongly recommended; host SDK is **v2026.01.3**)
-- Java 21+ (headful JDK; FlatLaf dark UI)
+- A HackRF (One or compatible) with firmware **v2024.02.1** or newer. This app is built against host SDK **v2026.01.3**.
+- Java 21+ with a display (not a headless JRE)
 
-For building you will also need Maven and a C toolchain (see [building.md](docs/building.md)).
+Building also needs Maven and a C toolchain — see [building.md](docs/building.md).
 
-## Building & Running
-
-The project provides a first-class Makefile experience:
+## Common commands
 
 ```bash
-make help      # Colorized, categorized help
-make test      # Run unit tests
-make lint      # Basic quality check
-make start     # Launch the analyzer
+make help      # colorized list
+make test      # unit tests (no radio required)
+make lint      # compile check
+make stats     # refresh docs/stats.md
+make mermaid   # parse-check diagrams
+make start     # launch
+make info      # what is plugged in
 ```
-
-See [docs/building.md](docs/building.md) for the full native cross-build process.
 
 ## Testing
 
-28 unit test classes focused on the core signal processing (no hardware required).
+Unit tests cover the core processing path and do not need a radio.
 
 ```bash
 make test
 ```
 
-Coverage reports are generated with JaCoCo.
+Coverage is written with JaCoCo.
 
 ## License
 
@@ -97,8 +94,8 @@ GPLv3
 ## Acknowledgments
 
 - Original work by pavsa and contributors
-- The HackRF project (Great Scott Gadgets)
-- All the people using this tool for real-world RF work
+- Great Scott Gadgets / the HackRF project
+- People using this for real RF work
 
 ---
 

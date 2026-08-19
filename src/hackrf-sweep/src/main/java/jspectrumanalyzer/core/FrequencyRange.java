@@ -22,4 +22,14 @@ public class FrequencyRange{
 		}
 		return false;
 	}
+
+	@Override
+	public int hashCode() {
+		return 31 * startMHz + endMHz;
+	}
+
+	@Override
+	public String toString() {
+		return startMHz + "–" + endMHz + " MHz";
+	}
 }

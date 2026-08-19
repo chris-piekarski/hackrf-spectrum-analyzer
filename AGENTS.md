@@ -36,6 +36,8 @@ This shows all available targets with descriptions and categories (colorized).
 - `make firmware-update` — Dry-run official GSG SPI flash. Write only with `CONFIRM=1` (optional `VERSION=2026.01.3`). Not part of `build` / `test`.
 - `make udev` — Install persistent udev rules (sudo once) so WSL usbipd nodes stay writable.
 - `make lint` — Compile/lint checks
+- `make stats` — Rewrite [docs/stats.md](docs/stats.md) (first-party LOC, packages, tests, git). Do not hand-edit that file.
+- `make mermaid` — Parse-check every first-party Mermaid fence (`mmdc` when installed)
 - `make start` — Build (if needed) + launch the Linux app
 - `make clean` — Clean build artifacts
 - `make run` — Alias for `start`
@@ -53,7 +55,7 @@ cd src/hackrf-sweep && mvn clean test
 # Open src/hackrf-sweep/target/site/jacoco/index.html
 ```
 
-We have **30 unit test classes** focused on the core DSP logic (SpurFilter, PersistentDisplay, DatasetSpectrum*, allocations, EMA, firmware parse, SpectrumSweepEngine, etc.). These run without hardware.
+Unit tests cover core DSP (SpurFilter, PersistentDisplay, DatasetSpectrum*, allocations, EMA, firmware parse, SpectrumSweepEngine, RadioIdentity, …) plus UI helpers. They run without hardware. **Do not bake a class count into this file** — run `make stats` and cite [docs/stats.md](docs/stats.md).
 
 ### Building Details
 
@@ -74,10 +76,11 @@ All first-class documentation lives under `docs/`:
 - [docs/hackrf-setup.md](docs/hackrf-setup.md) — Hardware, udev, firmware, Zadig
 - [docs/usage.md](docs/usage.md) — Running the analyzer, features, quick selects
 - [docs/architecture.md](docs/architecture.md) — High-level design (core, native, UI)
+- [docs/stats.md](docs/stats.md) — generated first-party stats (`make stats`)
 - [docs/contributing.md](docs/contributing.md)
 - [docs/plans/](docs/plans/README.md) — living implementation plans (status + checklists must stay current)
 
-**Diagrams**: Use Mermaid (```mermaid) for flowcharts, sequence diagrams, etc. in the docs. GitHub renders them natively. See architecture.md and building.md for examples.
+**Diagrams**: Use Mermaid fences in `docs/`. GitHub renders them with Mermaid 11. Prefer `flowchart`, `sequenceDiagram`, `classDiagram`, and `pie`. Do **not** use `deploymentDiagram` (removed in Mermaid 11). Quote sequence `Note` text if it contains `>`. After adding or changing a diagram, run `make mermaid`.
 
 Root-level files:
 - `README.md` — Project overview + quick links
@@ -93,8 +96,8 @@ Root-level files:
 2. Make changes in `src/hackrf-sweep/src/main/java/...` (or native under `src-c/` / lib/hackrf).
 3. Add or update unit tests for any new logic (especially in `core/` package).
 4. Run `make test` and ensure coverage doesn't regress significantly.
-5. Run `make lint`.
-6. Update relevant docs under `docs/`.
+5. Run `make lint`. After doc or layout changes run `make mermaid` and `make stats`.
+6. Update relevant docs under `docs/`. Never hand-edit `docs/stats.md`.
 7. Use `make start` to manually verify with a real HackRF when possible.
 8. Commit with clear messages. Reference issues when applicable.
 

@@ -7,6 +7,7 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 import jspectrumanalyzer.FakeHackRFSettings;
+import jspectrumanalyzer.core.RadioIdentity;
 
 class HackRFSweepSettingsUITest {
 
@@ -26,15 +27,20 @@ class HackRFSweepSettingsUITest {
         flushEdt();
 
         assertEquals("100 000", ui.fftBinSpinner().getValue().toString());
+        assertFalse(ui.autoScaleCheckbox().isSelected(), "dB auto-scale is off; axis stays −100…+20");
         assertEquals("Pause", ui.pauseButton().getText());
         assertTrue(ui.peakFallSpinner().isVisible());
         assertTrue(ui.decayRateCombo().isVisible());
-        assertEquals("HackRF disconnected", ui.connectedLabel().getText());
+        assertTrue(ui.connectedLabel().getText().contains("No radio detected"));
 
         SwingUtilities.invokeAndWait(() -> ui.pauseButton().doClick());
         flushEdt();
         assertTrue(settings.isCapturingPaused().getValue());
         assertEquals("Resume", ui.pauseButton().getText());
+
+        SwingUtilities.invokeAndWait(() -> ui.autoScaleCheckbox().setSelected(true));
+        flushEdt();
+        assertTrue(settings.isPowerAutoScale().getValue());
 
         settings.isChartsPeaksVisible().setValue(false);
         flushEdt();
@@ -44,7 +50,43 @@ class HackRFSweepSettingsUITest {
         flushEdt();
         assertFalse(ui.decayRateCombo().isVisible());
 
+        settings.getRadioIdentity().setValue(
+                RadioIdentity.of("HackRF One", "0000000000000000a1b2c3d4e5f60708", "v2026.01.3", "1.16"));
         settings.fireHardwareStatusChanged(true);
-        assertEquals("HackRF connected", ui.connectedLabel().getText());
+        flushEdt();
+        assertTrue(ui.connectedLabel().getText().contains("HackRF One"));
+        assertTrue(ui.connectedLabel().getText().contains("SN e5f60708"));
+        assertTrue(ui.connectedLabel().getText().contains("FW 2026.01.3"));
+        assertFalse(ui.connectedLabel().getText().contains("HackRF connected"));
+        assertTrue(ui.connectedLabel().getToolTipText().contains("Sweep running"));
+    }
+
+    @Test
+    void hardwareStripRestartStopPickerAndClkout() throws Exception {
+        FakeHackRFSettings settings = new FakeHackRFSettings();
+        settings.listedSerials.add("aabbccdd");
+        HackRFSweepSettingsUI ui = new HackRFSweepSettingsUI(settings);
+        flushEdt();
+
+        assertEquals("Restart", ui.restartButton().getText());
+        assertEquals("Stop", ui.stopButton().getText());
+        assertEquals(HackRFSweepSettingsUI.FIRST_RADIO, ui.radioCombo().getItemAt(0));
+        assertEquals("aabbccdd", ui.radioCombo().getItemAt(1));
+
+        SwingUtilities.invokeAndWait(() -> ui.stopButton().doClick());
+        flushEdt();
+        assertEquals(1, settings.releaseRadioCalls);
+        assertTrue(settings.isRadioReleased().getValue());
+        assertEquals("Stopped", ui.stopButton().getText());
+        assertFalse(ui.pauseButton().isEnabled());
+
+        SwingUtilities.invokeAndWait(() -> ui.restartButton().doClick());
+        flushEdt();
+        assertEquals(1, settings.restartSweepCalls);
+        assertFalse(settings.isRadioReleased().getValue());
+
+        SwingUtilities.invokeAndWait(() -> ui.clkoutCheckBox().setSelected(true));
+        flushEdt();
+        assertTrue(settings.getClkoutEnable().getValue());
     }
 }

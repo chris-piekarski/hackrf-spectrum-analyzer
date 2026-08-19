@@ -3,7 +3,6 @@ package jspectrumanalyzer.core;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 
-import jspectrumanalyzer.ui.GraphicsToolkit;
 import jspectrumanalyzer.ui.HotIronBluePalette;
 import shared.mvc.ModelValue;
 
@@ -62,6 +61,8 @@ public class PersistentDisplay {
 	private boolean						calibrating			= false;
 	private long						calibrationStarted	= 0;
 	private final long					calibrationTime		= 1000;
+	private final Object				imageLock			= new Object();
+	private BufferedImage				drawImage;
 	private ModelValue<BufferedImage>	displayImage		= new ModelValue<BufferedImage>("", null);
 	private FloatImage					imagePowerAccumulated;
 	private int							incomingDataCounter	= 0;
@@ -91,7 +92,7 @@ public class PersistentDisplay {
 					int bins = (int) ((datasetSpectrum.getFreqStopMHz() - datasetSpectrum.getFreqStartMHz()) * 1000000l
 							/ datasetSpectrum.getFFTBinSizeHz());
 					BufferedImage image = displayImage.getValue();
-					if (bins < image.getWidth()) {
+					if (image != null && bins < image.getWidth()) {
 						setImageSize(bins, image.getHeight());
 					}
 					calibrated = true;
@@ -104,10 +105,14 @@ public class PersistentDisplay {
 			return;
 		}
 
-		BufferedImage image = this.displayImage.getValue();
-		FloatImage imagePowerAccumulated = this.imagePowerAccumulated;
+		BufferedImage image;
+		FloatImage imagePowerAccumulated;
+		synchronized (imageLock) {
+			image = this.drawImage;
+			imagePowerAccumulated = this.imagePowerAccumulated;
+		}
 
-		if (image == null)
+		if (image == null || imagePowerAccumulated == null)
 			return;
 
 		float rawImagePowerArr[] = imagePowerAccumulated.data;
@@ -211,8 +216,17 @@ public class PersistentDisplay {
 					}
 				}
 			}
-
+			publishImage(image);
 		}
+	}
+
+	/** Chart/EDT only ever sees this copy; {@code image} may be written again. */
+	private void publishImage(BufferedImage image) {
+		int width = image.getWidth();
+		int height = image.getHeight();
+		BufferedImage published = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		image.copyData(published.getRaster());
+		displayImage.setValue(published);
 	}
 
 	public ModelValue<BufferedImage> getDisplayImage() {
@@ -238,8 +252,14 @@ public class PersistentDisplay {
 		calibrating = false;
 
 		System.out.println("Persistent image set to " + width + "x" + height);
-		displayImage.setValue(GraphicsToolkit.createAcceleratedImageOpaque(width, height));
-		imagePowerAccumulated = new FloatImage(width, height);
+		// Heap INT_RGB: compatible/accelerated images crash in libawt when
+		// setRGB races ChartPanel paint (BufImg_GetRasInfo).
+		BufferedImage next = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		synchronized (imageLock) {
+			drawImage = next;
+			imagePowerAccumulated = new FloatImage(width, height);
+		}
+		displayImage.setValue(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB));
 	}
 
 	public void setPersistenceTime(int persistenceTimeSecs) {

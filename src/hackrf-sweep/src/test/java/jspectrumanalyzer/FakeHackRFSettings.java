@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import jspectrumanalyzer.core.FrequencyAllocationTable;
 import jspectrumanalyzer.core.FrequencyRange;
 import jspectrumanalyzer.core.HackRFSettings;
+import jspectrumanalyzer.core.RadioIdentity;
 import shared.mvc.ModelValue;
 import shared.mvc.ModelValue.ModelValueBoolean;
 import shared.mvc.ModelValue.ModelValueInt;
@@ -26,11 +27,20 @@ public class FakeHackRFSettings implements HackRFSettings {
 	private final ModelValueInt gainTotal = new ModelValueInt("Gain [dB]", 40);
 	private final ModelValueInt gainVGA = new ModelValueInt("VGA Gain", 0, 2, 0, 60);
 	private final ModelValueBoolean capturingPaused = new ModelValueBoolean("Capturing paused", false);
+	private final ModelValue<RadioIdentity> radioIdentity = new ModelValue<RadioIdentity>("Radio",
+			RadioIdentity.ABSENT);
+	private final ModelValue<String> selectedSerial = new ModelValue<String>("Serial", "");
+	private final ModelValueBoolean clkoutEnable = new ModelValueBoolean("CLKOUT", false);
+	private final ModelValueBoolean radioReleased = new ModelValueBoolean("Radio released", false);
+	public int restartSweepCalls;
+	public int releaseRadioCalls;
+	public java.util.List<String> listedSerials = new java.util.ArrayList<String>();
 	private final ModelValueInt persistentDisplayPersTime = new ModelValueInt("Persistence time", 30, 1, 1, 60);
 	private final ModelValueInt peakFallRateSecs = new ModelValueInt("Peak fall rate", 15);
 	private final ModelValueBoolean persistentDisplay = new ModelValueBoolean("Persistent display", true);
 	private final ModelValueInt samples = new ModelValueInt("Samples", 8192);
 	private final ModelValueBoolean showPeaks = new ModelValueBoolean("Show peaks", true);
+	private final ModelValueBoolean powerAutoScale = new ModelValueBoolean("Auto-scale dB axis", false);
 	private final ModelValueBoolean debugDisplay = new ModelValueBoolean("Debug", false);
 	private final ModelValue<BigDecimal> spectrumLineThickness = new ModelValue<BigDecimal>("Spectrum line thickness",
 			new BigDecimal("1"));
@@ -131,8 +141,50 @@ public class FakeHackRFSettings implements HackRFSettings {
 	}
 
 	@Override
+	public ModelValue<RadioIdentity> getRadioIdentity() {
+		return radioIdentity;
+	}
+
+	@Override
+	public ModelValue<String> getSelectedSerial() {
+		return selectedSerial;
+	}
+
+	@Override
+	public ModelValueBoolean getClkoutEnable() {
+		return clkoutEnable;
+	}
+
+	@Override
+	public ModelValueBoolean isRadioReleased() {
+		return radioReleased;
+	}
+
+	@Override
+	public void restartSweep() {
+		restartSweepCalls++;
+		radioReleased.setValue(false);
+	}
+
+	@Override
+	public void releaseRadio() {
+		releaseRadioCalls++;
+		radioReleased.setValue(true);
+	}
+
+	@Override
+	public java.util.List<String> listRadioSerials() {
+		return listedSerials;
+	}
+
+	@Override
 	public ModelValueBoolean isChartsPeaksVisible() {
 		return showPeaks;
+	}
+
+	@Override
+	public ModelValueBoolean isPowerAutoScale() {
+		return powerAutoScale;
 	}
 
 	@Override

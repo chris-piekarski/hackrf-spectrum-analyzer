@@ -43,11 +43,10 @@ public class WaterfallPlot extends JPanel {
 	private DatasetSpectrum		lastSpectrum			= null;
 	private ColorPalette		palette					= new HotIronBluePalette();
 	private Rectangle2D.Float	rect					= new Rectangle2D.Float(0f, 0f, 1f, 1f);
-	private String				renderingInfo			= "";
+	private int					lastBinCount			= 0;
 	private int					screenWidth;
 	private double				spectrumPaletteSize		= 65;
 	private double				spectrumPaletteStart	= -90;
-	private String[]			statusMessage			= new String[4];
 
 	public WaterfallPlot(ChartPanel chartPanel, int maxHeight) {
 		setPreferredSize(new Dimension(100, 200));
@@ -173,9 +172,7 @@ public class WaterfallPlot extends JPanel {
 			g.draw(rect);
 		}
 
-		renderingInfo = String.format("RBW %.1fkHz / FFT bins: %d%s / %.1ffps",
-				lastSpectrum == null ? 0 : lastSpectrum.getFFTBinSizeHz() / 1000d, size >= 10000 ? size / 1000 : size,
-				size >= 10000 ? "k" : "", fps.getEma());
+		lastBinCount = size;
 		fpsRenderedFrames++;
 		if (System.currentTimeMillis() - lastFPSRecalculated > 1000) {
 			double rawfps = fpsRenderedFrames / ((System.currentTimeMillis() - (double) lastFPSRecalculated) / 1000d);
@@ -237,6 +234,18 @@ public class WaterfallPlot extends JPanel {
 		this.chartWidth = width;
 	}
 
+	public double getLastRbwHz() {
+		return lastSpectrum == null ? 0 : lastSpectrum.getFFTBinSizeHz();
+	}
+
+	public int getLastBinCount() {
+		return lastBinCount;
+	}
+
+	public double getFps() {
+		return fps.getEma();
+	}
+
 	public synchronized void setHistorySize(int historyInPixels) {
 		BufferedImage bufferedImages[] = new BufferedImage[2];
 		bufferedImages[0] = GraphicsToolkit.createAcceleratedImageOpaque(screenWidth, historyInPixels);
@@ -258,17 +267,6 @@ public class WaterfallPlot extends JPanel {
 	 */
 	public void setSpectrumPaletteStart(int dB) {
 		this.spectrumPaletteStart = dB;
-	}
-
-	/**
-	 * Sets status message to be drawn near bottom right corner
-	 * 
-	 * @param message
-	 * @param index
-	 *            max array length is 4
-	 */
-	public void setStatusMessage(String message, int index) {
-		this.statusMessage[index] = message;
 	}
 
 	private void copyImage(BufferedImage src, BufferedImage dst) {
@@ -321,7 +319,6 @@ public class WaterfallPlot extends JPanel {
 		return -1;
 	}
 
-	Rectangle2D stringBounds;
 	@Override
 	protected void paintComponent(Graphics arg0) {
 		long drawStart	= System.nanoTime();
@@ -340,19 +337,6 @@ public class WaterfallPlot extends JPanel {
 			g.drawString(String.format("%.1fMHz", displayMarkerFrequency / 1000000.0), displayMarkerX + 5, h / 2);
 		} //finish marker 
 
-		g.setColor(Color.white);
-		if (stringBounds == null)
-			stringBounds = g.getFontMetrics().getStringBounds("TEST", g);
-		int fontHeight = (int) stringBounds.getHeight();
-		int x = chartXOffset + w - 350;
-		int y = h - fontHeight * (statusMessage.length + 1);
-		g.drawString(renderingInfo, x, y);
-
-		for (int i = 0; i < statusMessage.length; i++) {
-			if (statusMessage[i] != null)
-				g.drawString(statusMessage[i], x, y + fontHeight * (i + 1));
-		}
-		
 		long drawingTime	= System.nanoTime()-drawStart;
 		drawingTimeSum	+= drawingTime;
 		drawingCounter++;

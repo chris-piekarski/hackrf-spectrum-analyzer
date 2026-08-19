@@ -23,6 +23,9 @@ class FrequencySelectorPanelTest {
         // out of range
         assertFalse(panel.setValue(50));
         assertEquals(750, panel.getValue());
+
+        assertTrue(panel.setValue(750));
+        assertEquals(750, panel.getValue());
     }
 
     @Test

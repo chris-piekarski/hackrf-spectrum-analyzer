@@ -60,7 +60,29 @@ public interface HackRFSettings {
 
 	public ModelValueBoolean isCapturingPaused();
 
+	/** Attached radio board / serial / firmware. {@link RadioIdentity#ABSENT} when none. */
+	public ModelValue<RadioIdentity> getRadioIdentity();
+
+	/** Empty string = first radio found. */
+	public ModelValue<String> getSelectedSerial();
+
+	/** Drive 10 MHz CLKOUT (CLKIN is selected automatically when present). */
+	public ModelValueBoolean getClkoutEnable();
+
+	/** True when the native sweep is stopped and USB is released. */
+	public ModelValueBoolean isRadioReleased();
+
+	public void restartSweep();
+
+	public void releaseRadio();
+
+	/** USB serials currently visible to libhackrf (may be empty). */
+	public java.util.List<String> listRadioSerials();
+
 	public ModelValueBoolean isChartsPeaksVisible();
+
+	/** Live dB-axis auto-scale. Off = fixed −100…+20. */
+	public ModelValueBoolean isPowerAutoScale();
 
 	public ModelValueBoolean isFilterSpectrum();
 

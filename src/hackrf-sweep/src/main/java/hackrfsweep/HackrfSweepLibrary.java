@@ -18,4 +18,6 @@ public class HackrfSweepLibrary implements Library {
 	public static native int hackrf_sweep_lib_start(HackrfSweepLibrary.hackrf_sweep_lib_start__fft_power_callback_callback _fft_power_callback, int freq_min, int freq_max, int fft_bin_width, int num_samples, int lna_gain, int vga_gain, int _antennaPowerEnable, int _enableAntennaLNA);
 	/** Original signature : <code>void hackrf_sweep_lib_stop()</code> */
 	public static native void hackrf_sweep_lib_stop();
+	/** Call before start. {@code serial_number} null/empty = first device. */
+	public static native void hackrf_sweep_lib_config(String serial_number, int clkout_enable);
 }

@@ -2,8 +2,8 @@ package jspectrumanalyzer.ui;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.awt.Component;
 import java.beans.PropertyVetoException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.swing.JButton;
 
@@ -14,13 +14,9 @@ import jspectrumanalyzer.core.FrequencyRange;
 class FrequencySelectorRangeBinderTest {
 
     private static JButton buttonNamed(QuickFrequencySelectorPanel panel, String text) {
-        for (Component child : panel.getComponents()) {
-            if (child instanceof JButton && text.equals(((JButton) child).getText())) {
-                return (JButton) child;
-            }
-        }
-        fail("No button labeled " + text);
-        return null;
+        JButton button = panel.findButton(text);
+        assertNotNull(button, "No button labeled " + text);
+        return button;
     }
 
     @Test
@@ -43,25 +39,44 @@ class FrequencySelectorRangeBinderTest {
         QuickFrequencySelectorPanel quick = new QuickFrequencySelectorPanel();
         FrequencySelectorRangeBinder binder = new FrequencySelectorRangeBinder(start, end, quick);
 
-        Object[][] expected = {
-                { "WiFi 2", 2401, 2495 },
-                { "WiFi 5", 5030, 5875 },
-                { "LTE-1", 1890, 2200 },
-                { "LTE-2", 663, 915 },
-                { "FM", 88, 108 },
-                { "NFC", 13, 14 },
-                { "HF", 3, 30 },
-                { "VHF", 30, 300 },
-                { "UHF", 300, 3000 },
-                { "V-TV", 54, 216 },
-                { "U-TV", 470, 890 },
-        };
-        for (Object[] row : expected) {
-            buttonNamed(quick, (String) row[0]).doClick();
-            assertEquals(row[1], binder.getFrequencyRange().getStartMHz(), row[0] + " start");
-            assertEquals(row[2], binder.getFrequencyRange().getEndMHz(), row[0] + " end");
-            assertEquals(row[0], quick.getValue());
+        for (QuickSelectPreset preset : QuickSelectPreset.values()) {
+            buttonNamed(quick, preset.label).doClick();
+            assertEquals(preset.startMHz, binder.getFrequencyRange().getStartMHz(), preset.label + " start");
+            assertEquals(preset.endMHz, binder.getFrequencyRange().getEndMHz(), preset.label + " end");
+            assertEquals(preset.label, quick.getValue());
         }
+    }
+
+    @Test
+    void clickingSamePresetAgainRestoresRange() {
+        FrequencySelectorPanel start = new FrequencySelectorPanel(1, 7250, 1, 1000);
+        FrequencySelectorPanel end = new FrequencySelectorPanel(1, 7250, 1, 3000);
+        QuickFrequencySelectorPanel quick = new QuickFrequencySelectorPanel();
+        FrequencySelectorRangeBinder binder = new FrequencySelectorRangeBinder(start, end, quick);
+
+        buttonNamed(quick, QuickSelectPreset.WIFI_2.label).doClick();
+        start.setValue(2412);
+        end.setValue(2462);
+        buttonNamed(quick, QuickSelectPreset.WIFI_2.label).doClick();
+
+        assertEquals(QuickSelectPreset.WIFI_2.startMHz, binder.getFrequencyRange().getStartMHz());
+        assertEquals(QuickSelectPreset.WIFI_2.endMHz, binder.getFrequencyRange().getEndMHz());
+    }
+
+    @Test
+    void quickSelectNotifiesRangeListenerOnce() {
+        FrequencySelectorPanel start = new FrequencySelectorPanel(1, 7250, 1, 2400);
+        FrequencySelectorPanel end = new FrequencySelectorPanel(1, 7250, 1, 2500);
+        QuickFrequencySelectorPanel quick = new QuickFrequencySelectorPanel();
+        FrequencySelectorRangeBinder binder = new FrequencySelectorRangeBinder(start, end, quick);
+
+        AtomicInteger notifications = new AtomicInteger();
+        binder.addPropertyChangeListener(evt -> notifications.incrementAndGet());
+        buttonNamed(quick, "LTE-1").doClick();
+
+        assertEquals(1, notifications.get(), "preset must be one sweep restart, not start+end");
+        assertEquals(QuickSelectPreset.LTE_1.startMHz, binder.getFrequencyRange().getStartMHz());
+        assertEquals(QuickSelectPreset.LTE_1.endMHz, binder.getFrequencyRange().getEndMHz());
     }
 
     @Test

@@ -5,9 +5,9 @@ flowchart TD
     A[Update Firmware<br/>v2024.02.1+ / 2026.01.3] --> B{OS?}
     B -->|Linux| C[Install udev rules<br/>plugdev group]
     B -->|Windows| D[Run Zadig<br/>WinUSB driver]
-    C --> E[Verify with hackrf_info]
+    C --> E[Verify with make info]
     D --> E
-    E --> F[Launch Analyzer<br/>make start]
+    E --> F[Launch the app<br/>make start]
 ```
 
 Proper USB permissions and firmware are critical for reliable operation.

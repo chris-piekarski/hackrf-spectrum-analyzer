@@ -1,84 +1,60 @@
 package jspectrumanalyzer.ui;
 
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.beans.PropertyVetoException;
-import java.lang.reflect.InvocationTargetException;
 
 import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
 import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-import java.io.*;
 
+/**
+ * Quick Select buttons. Labels and MHz ranges live in {@link QuickSelectPreset}.
+ * Hover range is an in-panel line so X11 cannot stack leftover tooltip windows.
+ */
 public class QuickFrequencySelectorPanel extends JPanel
 {
-	/**
-	 * 
-	 */
 	private static final long	serialVersionUID	= -4830755053319335365L;
-	private String			value			= "WiFi 2G";
+	static final String			HOVER_HINT_NAME		= "quickSelectHoverHint";
+	private String			value			= QuickSelectPreset.WIFI_2.label;
+	private final JPanel		grid;
+	private final JLabel		hoverHint;
 
-	/**
-	 * Create the panel.
-	 */
 	public QuickFrequencySelectorPanel()
 	{
 		AnalyzerLookAndFeel.install();
 
-		setLayout(new GridLayout(4, 3, 0, 0));
+		QuickSelectPreset[] presets = QuickSelectPreset.values();
+		int cols = 3;
+		int rows = (presets.length + cols - 1) / cols;
+		setLayout(new BorderLayout(0, 2));
 
-		JButton button_wifi2 = new JButton("WiFi 2");
-		add(button_wifi2);
+		grid = new JPanel(new GridLayout(rows, cols, 0, 0));
+		for (QuickSelectPreset preset : presets)
+		{
+			JButton button = new JButton(preset.label);
+			button.addActionListener(addListener(preset.label));
+			ExclusiveToolTip.install(button, preset.tooltip());
+			button.addMouseListener(new HoverHintListener(preset.tooltip()));
+			grid.add(button);
+		}
+		add(grid, BorderLayout.CENTER);
 
-		JButton button_wifi5 = new JButton("WiFi 5");
-		add(button_wifi5);
+		hoverHint = new JLabel(" ");
+		hoverHint.setName(HOVER_HINT_NAME);
+		hoverHint.setFont(hoverHint.getFont().deriveFont(Font.PLAIN, 11f));
+		hoverHint.setHorizontalAlignment(SwingConstants.CENTER);
+		add(hoverHint, BorderLayout.SOUTH);
 
-		JButton button_lte = new JButton("LTE-1");
-		add(button_lte);
-
-		JButton button_lte2 = new JButton("LTE-2");
-		add(button_lte2);
-
-
-		JButton button_nfc = new JButton("NFC");
-		add(button_nfc);
-
-		JButton button_fm = new JButton("FM");
-		add(button_fm);
-
-		JButton button_hf = new JButton("HF");
-		add(button_hf);
-
-		JButton button_vhf = new JButton("VHF");
-		add(button_vhf);
-
-		JButton button_uhf = new JButton("UHF");
-		add(button_uhf);
-
-		JButton button_vtv = new JButton("V-TV");
-		add(button_vtv);
-
-		JButton button_utv = new JButton("U-TV");
-		add(button_utv);
-
-
-		button_wifi2.addActionListener(addListener("WiFi 2"));
-		button_wifi5.addActionListener(addListener("WiFi 5"));
-		button_lte.addActionListener(addListener("LTE-1"));
-		button_lte2.addActionListener(addListener("LTE-2"));
-		button_nfc.addActionListener(addListener("NFC"));
-		button_fm.addActionListener(addListener("FM"));
-		button_hf.addActionListener(addListener("HF"));
-		button_vhf.addActionListener(addListener("VHF"));
-		button_uhf.addActionListener(addListener("UHF"));
-		button_vtv.addActionListener(addListener("V-TV"));
-		button_utv.addActionListener(addListener("U-TV"));
-
-		Dimension d = new Dimension(300, 100);
+		Dimension d = new Dimension(300, 25 * rows + 16);
 		setPreferredSize(d);
 		setMaximumSize(d);
 		setMinimumSize(d);
@@ -89,28 +65,86 @@ public class QuickFrequencySelectorPanel extends JPanel
 		return value;
 	}
 
+	String hoverHintText()
+	{
+		return hoverHint.getText();
+	}
+
+	JButton findButton(String label)
+	{
+		return findButton(this, label);
+	}
+
+	static JButton findButton(Container root, String label)
+	{
+		for (Component child : root.getComponents())
+		{
+			if (child instanceof JButton && label.equals(((JButton) child).getText()))
+				return (JButton) child;
+			if (child instanceof Container)
+			{
+				JButton nested = findButton((Container) child, label);
+				if (nested != null)
+					return nested;
+			}
+		}
+		return null;
+	}
+
 	private ActionListener addListener(String type)
 	{
-		ActionListener listener = e -> {
-			System.out.println("quick link click: "+type);
-			try {
-				if (type != value) {
-					fireValueChange(value, type);
-				}
+		return e -> {
+			System.out.println("quick link click: " + type);
+			try
+			{
+				// Re-apply even if this button is already selected so a
+				// second click restores the FCC/ITU envelope after digit edits.
+				fireValueChange(value, type);
 			}
 			catch (PropertyVetoException ee)
 			{
 				System.out.println("Failed to set quick selection");
-			}		
+			}
 		};
-		return listener;
 	}
 
 	private void fireValueChange(String oldValue, String newValue) throws PropertyVetoException
 	{
-		fireVetoableChange("value", oldValue, newValue);
+		// VetoableChangeSupport drops equal old/new; pass null so a second
+		// click on the same button still reapplies the range.
+		fireVetoableChange("value", null, newValue);
 		QuickFrequencySelectorPanel.this.value = newValue;
 		firePropertyChange("value", oldValue, newValue);
 	}
 
+	@Override
+	public void removeNotify()
+	{
+		hoverHint.setText(" ");
+		ExclusiveToolTip.hide();
+		super.removeNotify();
+	}
+
+	private final class HoverHintListener extends MouseAdapter
+	{
+		private final String text;
+
+		HoverHintListener(String text)
+		{
+			this.text = text;
+		}
+
+		@Override
+		public void mouseEntered(MouseEvent e)
+		{
+			hoverHint.setText(text);
+		}
+
+		@Override
+		public void mouseExited(MouseEvent e)
+		{
+			if (text.equals(hoverHint.getText()))
+				hoverHint.setText(" ");
+		}
+	}
 }

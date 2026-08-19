@@ -10,7 +10,7 @@ flowchart TD
     end
 
     NativeBridge["Native Bridge (JNA)"]
-    NativeLib["libhackrf-sweep.so / .dll<br/>(hackrf_sweep as library)"]
+    NativeLib["Native sweep library<br/>(libhackrf-sweep.so / .dll)"]
     HackRF["libhackrf + USB (libusb)"]
 
     UI --> Core
@@ -23,21 +23,20 @@ flowchart TD
 
 ### Core DSP (`jspectrumanalyzer/core/`)
 - `DatasetSpectrum`, `DatasetSpectrumPeak`
-- `SpurFilter`
-- `PersistentDisplay`
-- `EMA`, `FFTBins`, `PowerCalibration`
+- `SpectrumSweepEngine`, `SpurFilter`, `PersistentDisplay`
+- `EMA`, `FFTBins`, `PowerCalibration`, `RadioIdentity`
 - Frequency allocation tables
 
 These are the best candidates for unit testing (and have the majority of our test coverage).
 
 ### Native Integration
 - `src-c/0001-hackrf_sweep-to-library-conversion-v2026.01.3.patch` — Turns the upstream `hackrf_sweep` tool into a reusable library.
-- `HackRFSweepNativeBridge.java` + generated `HackrfSweepLibrary.java`
+- `HackRFSweepNativeBridge.java` + hand-maintained `HackrfSweepLibrary.java` (`make jnabridge` does not regenerate it)
 - The build process resets the hackrf submodule to `HACKRF_SDK_PIN` (v2026.01.3) and applies the patch.
 
 ### UI Layer
-- Traditional Swing + JFreeChart.
-- `WaterfallPlot`, various settings panels, quick frequency selectors (this fork's addition).
+- Swing + FlatLaf + JFreeChart.
+- `WaterfallPlot`, `HackRFSweepSettingsUI`, Quick Select (`QuickSelectPreset`), `SweepStatusBar`, radio identity (board / serial / firmware). Spectrum overlays: Wi-Fi 20 MHz channels (`WifiChannelOverlay`) and live US FM stations (`FmChannelPlan.detectStations` + `FmStationTracker` + `FmChannelOverlay`). Frequency zoom (`SpectrumZoom` + `SpectrumZoomHistory`) retunes the sweep like a Grafana time-range drag. When the view is wider than one preset, `QuickSelectBandOverlay` draws those Quick Select ranges as labeled bands.
 
 ### Build System
 - Root `Makefile` — convenience targets (`make help`, `make test`, `make start`, etc.).
@@ -54,17 +53,18 @@ These are the best candidates for unit testing (and have the majority of our tes
 
 ```mermaid
 sequenceDiagram
-    participant Native as Native libhackrf-sweep
-    participant Bridge as HackRFSweepNativeBridge (JNA)
-    participant Main as HackRFSweepSpectrumAnalyzer
-    participant Core as Core DSP (SpurFilter, Peak, PersistentDisplay)
-    participant UI as UI (Charts, Waterfall)
+    participant Native as Native sweep library
+    participant Bridge as JNA bridge
+    participant Analyzer as Analyzer
+    participant Engine as SpectrumSweepEngine
+    participant DSP as Core DSP
+    participant UI as Charts and waterfall
 
-    Native->>Bridge: FFT power data batches (callback)
-    Bridge->>Main: newSpectrumData(FFTBins)
-    Main->>Core: Process spectrum (filter, peaks, persistence)
-    Core->>UI: Update displays
-    UI-->>Main: Render to screen
+    Native->>Bridge: FFT power batches
+    Bridge->>Analyzer: newSpectrumData
+    Analyzer->>Engine: accept bins
+    Engine->>DSP: filter peaks persist
+    Engine->>UI: hooks update displays
 ```
 
 ## Testing Strategy
@@ -109,6 +109,17 @@ classDiagram
         +getFrequencyBands()
         +drawAllocationTable()
     }
+    class FrequencyBand
+    class FFTBins
+    class SpectrumSweepEngine {
+        +accept()
+        +runProcessingLoop()
+        +runSweepLoop()
+    }
+    class RadioIdentity {
+        +statusHtml()
+        +shortSerial()
+    }
 
     DatasetSpectrum <|-- DatasetSpectrumPeak
     SpurFilter --> DatasetSpectrum
@@ -116,60 +127,33 @@ classDiagram
     PersistentDisplay --> EMA
     PowerCalibration --> FFTBins
     FrequencyAllocationTable --> FrequencyBand
+    SpectrumSweepEngine --> DatasetSpectrumPeak
+    SpectrumSweepEngine --> SpurFilter
 ```
 
 ## Deployment Diagram
 
 ```mermaid
-deploymentDiagram
-    node "Developer Machine (Linux)" {
-        artifact "Makefile + mvn"
-        artifact "src/main/java (core + ui)"
-        artifact "src-c (patch)"
-    }
-
-    node "Build Output" {
-        artifact "hackrf_spectrum_analyzer.jar (fat)"
-        artifact "libhackrf-sweep.so"
-        artifact "hackrf-sweep.dll (cross)"
-        artifact "launchers"
-    }
-
-    node "Target: Linux User" {
-        artifact "hackrf_sweep_spectrum_analyzer_linux.sh"
-        artifact "JRE"
-        artifact "HackRF USB"
-    }
-
-    node "Target: Windows User" {
-        artifact "hackrf_sweep_spectrum_analyzer_windows.cmd"
-        artifact "JRE"
-        artifact "HackRF USB + WinUSB"
-    }
-
-    "Developer Machine (Linux)" --> "Build Output" : make build
-    "Build Output" --> "Target: Linux User"
-    "Build Output" --> "Target: Windows User"
+flowchart TD
+    Dev["Linux build host<br/>Makefile, Maven, sweep-as-library patch"]
+    Out["Build output<br/>fat JAR, libhackrf-sweep.so, hackrf-sweep.dll, launchers"]
+    Linux["Linux user<br/>.sh launcher + JRE + radio"]
+    Win["Windows user<br/>.cmd launcher + JRE + WinUSB"]
+    Dev -->|make build| Out
+    Out --> Linux
+    Out --> Win
 ```
 
 ## Java Package Structure (Core Focus)
 
 ```mermaid
-classDiagram
-    direction LR
-    namespace jspectrumanalyzer.core {
-        class DatasetSpectrum
-        class SpurFilter
-        class PersistentDisplay
-        class EMA
-    }
-    namespace jspectrumanalyzer.ui {
-        class WaterfallPlot
-        class HotIronBluePalette
-    }
-    namespace jspectrumanalyzer.nativebridge {
-        class HackRFSweepNativeBridge
-    }
-    core --> ui
-    core --> nativebridge
+flowchart LR
+    UI["jspectrumanalyzer.ui<br/>settings, waterfall, Quick Select"]
+    Core["jspectrumanalyzer.core<br/>engine, DSP, RadioIdentity"]
+    Bridge["jspectrumanalyzer.nativebridge<br/>JNA + device query"]
+    Native["libhackrf-sweep"]
+    UI --> Core
+    UI --> Bridge
+    Core --> Bridge
+    Bridge --> Native
 ```

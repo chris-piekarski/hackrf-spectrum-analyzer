@@ -1,0 +1,30 @@
+package jspectrumanalyzer.ui;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class SweepStatusBarTest {
+
+	@Test
+	void formatHzPicksUnit() {
+		assertEquals("—", SweepStatusBar.formatHz(0));
+		assertEquals("500 Hz", SweepStatusBar.formatHz(500));
+		assertEquals("98.0 kHz", SweepStatusBar.formatHz(98_000));
+		assertEquals("1.00 MHz", SweepStatusBar.formatHz(1_000_000));
+	}
+
+	@Test
+	void formatBinsGroupsThousands() {
+		assertEquals("—", SweepStatusBar.formatBins(0));
+		assertEquals("1,019", SweepStatusBar.formatBins(1019));
+	}
+
+	@Test
+	void formatFpsAndPeak() {
+		assertEquals("—", SweepStatusBar.formatFps(0));
+		assertEquals("81 fps", SweepStatusBar.formatFps(81.4));
+		assertEquals("—", SweepStatusBar.formatPeakDbm(null));
+		assertEquals("-6.6 dBm", SweepStatusBar.formatPeakDbm(Double.valueOf(-6.6)));
+	}
+}

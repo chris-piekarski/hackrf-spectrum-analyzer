@@ -130,6 +130,8 @@ public class FrequencySelectorPanel extends JPanel
 	{
 		if (newValue < minValue || newValue > maxValue)
 			return false;
+		if (newValue == this.value)
+			return true;
 		int oldValue = this.value;
 		if (!SwingUtilities.isEventDispatchThread())
 		{

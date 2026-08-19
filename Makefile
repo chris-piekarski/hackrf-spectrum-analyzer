@@ -28,6 +28,7 @@ help: ## Show this help (colorized with categories)
 	@echo "  make build"
 	@echo "  make test"
 	@echo "  make info"
+	@echo "  make stats"
 	@echo "  make start"
 	@echo ""
 
@@ -65,6 +66,12 @@ test-hw: ## Hardware smoke tests (skips if no HackRF). Does not run under make t
 lint: ## Run Maven compile (acts as basic lint/quality check).
 	cd src/hackrf-sweep && mvn clean compile
 
+stats: ## Refresh docs/stats.md (first-party LOC, packages, tests, git)
+	@python3 $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts/repo-stats.py
+
+mermaid: ## Parse-check all first-party Mermaid diagrams (uses mmdc if installed)
+	@$(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts/check-mermaid.sh
+
 ##@ Hardware
 info: ## List HackRF devices, app SDK/API versions, and upstream updates
 	@$(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts/hackrf-info.sh
@@ -84,4 +91,4 @@ start: build ## Build if needed, then launch the Linux app.
 
 run: start ## Alias for start.
 
-.PHONY: build clean test test-hw lint info list-devices firmware-update udev start run help deps runtime-deps
+.PHONY: build clean test test-hw lint stats mermaid info list-devices firmware-update udev start run help deps runtime-deps

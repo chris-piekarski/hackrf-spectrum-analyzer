@@ -38,6 +38,13 @@ public class HackRFSweepNativeBridge
 
 	}
 
+	public static synchronized void configure(String serialNumber, boolean clkoutEnable)
+	{
+		HackrfSweepLibrary.hackrf_sweep_lib_config(
+				serialNumber == null || serialNumber.isEmpty() ? null : serialNumber,
+				clkoutEnable ? 1 : 0);
+	}
+
 	public static synchronized void start(HackRFSweepDataCallback dataCallback, int freq_min_MHz, int freq_max_MHz, int fft_bin_width, int num_samples,
 			int lna_gain, int vga_gain, boolean antennaPowerEnable, boolean antennaLNAEnable)
 	{

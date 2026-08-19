@@ -24,7 +24,7 @@ flowchart TD
 
 ## Testing
 
-We have **30 unit test classes** focused on the pure Java core logic.
+Unit tests live under `src/hackrf-sweep/src/test/java` and do not need a radio. Counts (classes, methods, coverage) are refreshed by `make stats` into [stats.md](stats.md).
 
 ```bash
 make test
@@ -60,11 +60,11 @@ sequenceDiagram
     Dev->>Make: make test
     Make->>Maven: mvn clean test
     Maven->>JaCoCo: Instrument classes
-    Maven->>Maven: Run JUnit tests (28 classes)
+    Maven->>Maven: Run JUnit unit tests
     JaCoCo->>Report: Generate coverage data
     Maven-->>Make: Report summary
     Dev->>Report: Open index.html
-    Note over Dev,Report: Aim for >80% on core/; project ~50% before large refactors
+    Note over Dev,Report: Aim for high coverage on core
 ```
 
 
@@ -72,6 +72,8 @@ sequenceDiagram
 
 ```bash
 make lint          # Runs Maven compile
+make stats         # Rewrite docs/stats.md from the working tree
+make mermaid       # Parse every ```mermaid fence (needs mermaid-cli for full check)
 ```
 
 There is currently no strict Java formatter or Checkstyle enforced, but please keep code style consistent with surrounding files.

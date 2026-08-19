@@ -1,11 +1,10 @@
 package jspectrumanalyzer.ui;
 
 import java.awt.BorderLayout;
-import java.awt.Desktop;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.beans.PropertyChangeEvent;
 import java.math.BigDecimal;
-import java.net.URI;
 import java.util.Optional;
 import java.util.Vector;
 import java.util.function.Consumer;
@@ -33,6 +32,7 @@ import jspectrumanalyzer.core.FrequencyAllocations;
 import jspectrumanalyzer.core.FrequencyRange;
 import jspectrumanalyzer.core.HackRFSettings;
 import jspectrumanalyzer.core.HackRFSettings.HackRFEventAdapter;
+import jspectrumanalyzer.core.RadioIdentity;
 import net.miginfocom.swing.MigLayout;
 import shared.mvc.MVCController;
 import javax.swing.border.EmptyBorder;
@@ -49,6 +49,8 @@ public class HackRFSweepSettingsUI extends JPanel
 	private HackRFSettings hRF;
 	private static final long serialVersionUID = 7721079457485020637L;
 	private JLabel txtHackrfConnected;
+	private boolean radioSweeping;
+	private boolean syncingRadioCombo;
 	private FrequencySelectorPanel frequencySelectorStart;
 	private FrequencySelectorPanel frequencySelectorEnd;
 	private QuickFrequencySelectorPanel quickFrequencySelector;
@@ -60,8 +62,14 @@ public class HackRFSweepSettingsUI extends JPanel
 	private JSlider slider_waterfallPaletteStart;
 	private JSlider slider_waterfallPaletteSize;
 	private JCheckBox chckbxShowPeaks;
+	private JCheckBox chckbxAutoScalePower;
 	private JCheckBox chckbxRemoveSpurs;
 	private JButton btnPause;
+	private JButton btnRestart;
+	private JButton btnStop;
+	private JComboBox<String> comboRadio;
+	private JCheckBox checkBoxClkout;
+	static final String FIRST_RADIO = "First radio";
 	private SpinnerListModel spinnerModelFFTBinHz;
 	private FrequencySelectorRangeBinder frequencyRangeSelector;
 	private JCheckBox chckbxFilterSpectrum;
@@ -91,6 +99,7 @@ public class HackRFSweepSettingsUI extends JPanel
 	{
 		this.hRF	= hackRFSettings;
 		AnalyzerLookAndFeel.install();
+		setBorder(new EmptyBorder(4, 8, 16, 8));
 		int minFreq = 1;
 		int maxFreq = 7250;
 		int freqStep = 1;
@@ -118,12 +127,41 @@ public class HackRFSweepSettingsUI extends JPanel
 		panelMainSettings.add(frequencySelectorEnd, "cell 0 16,grow");
 		
 		txtHackrfConnected = new JLabel();
-		txtHackrfConnected.setText("HackRF disconnected");
-		panelMainSettings.add(txtHackrfConnected, "cell 0 24,growx");
+		txtHackrfConnected.setText(RadioIdentity.ABSENT.statusHtml());
+		txtHackrfConnected.setToolTipText(RadioIdentity.ABSENT.tooltip(false));
+		txtHackrfConnected.setVerticalAlignment(SwingConstants.TOP);
 		txtHackrfConnected.setBorder(null);
-		
+
+		comboRadio = new JComboBox<>(new String[] { FIRST_RADIO });
+		comboRadio.setToolTipText("Which HackRF to open. First radio = libhackrf default.");
+
+		checkBoxClkout = new JCheckBox("CLKOUT 10 MHz");
+		checkBoxClkout.setToolTipText("Drive CLKOUT so another radio can lock. CLKIN is used automatically when a 10 MHz signal is present.");
+
+		btnRestart = new JButton("Restart");
+		btnRestart.setToolTipText("Stop and start the sweep again. Use this if the plot freezes after a setting change.");
+		btnStop = new JButton("Stop");
+		btnStop.setToolTipText("Halt the native sweep and release USB so other tools can open the radio.");
 		btnPause = new JButton("Pause");
-		panelMainSettings.add(btnPause, "cell 0 26,growx");
+		btnPause.setToolTipText("Freeze the display. The radio keeps sweeping; click Resume to show live data again.");
+		ExclusiveToolTip.install(txtHackrfConnected);
+		ExclusiveToolTip.install(comboRadio);
+		ExclusiveToolTip.install(checkBoxClkout);
+		ExclusiveToolTip.install(btnRestart);
+		ExclusiveToolTip.install(btnStop);
+		ExclusiveToolTip.install(btnPause);
+
+		JPanel radioButtons = new JPanel(new GridLayout(1, 2, 4, 0));
+		radioButtons.add(btnRestart);
+		radioButtons.add(btnStop);
+
+		JPanel radioStrip = new JPanel(new GridLayout(0, 1, 0, 4));
+		radioStrip.add(txtHackrfConnected);
+		radioStrip.add(comboRadio);
+		radioStrip.add(checkBoxClkout);
+		radioStrip.add(radioButtons);
+		radioStrip.add(btnPause);
+		panelMainSettings.add(radioStrip, "cell 0 24,growx");
 
 		
 		
@@ -135,8 +173,10 @@ public class HackRFSweepSettingsUI extends JPanel
 
 		JPanel tab1	= new JPanel(new MigLayout("", "[123.00px,grow,leading]", "[][][0][][][0][][][0][][][0][][][0][][0][][grow,fill]"));
 		
-		JPanel tab2	= new JPanel(new MigLayout("", "[123.00px,grow,leading]", "[][0][][][0][][][0][][0][][][0][][0][][][0][0][][][0][][0][grow,fill]"));
+		JPanel tab2	= new JPanel(new MigLayout("", "[123.00px,grow,leading]", "[][0][][][0][][][0][][][][][0][][0][][][0][0][][][0][][0][grow,fill]"));
 		
+		tab1.setBorder(new EmptyBorder(4, 0, 12, 0));
+		tab2.setBorder(new EmptyBorder(4, 0, 12, 0));
 		tabbedPane.addTab("HackRF Settings", tab1);
 		tabbedPane.addTab("Chart options", tab2);
 
@@ -197,15 +237,11 @@ public class HackRFSweepSettingsUI extends JPanel
 
 		JButton btnAbout = new JButton("Visit homepage");
 		btnAbout.addActionListener(e -> {
-			 if (Desktop.isDesktopSupported()) {
-		            Desktop desktop = Desktop.getDesktop();
-		            try {
-		                URI uri = new URI(Version.url);
-		                desktop.browse(uri);
-		            } catch (Exception ex) {
-		                ex.printStackTrace();
-		            }
-		    }
+			try {
+				DesktopBrowse.open(Version.url);
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
 		});
 		
 		JLabel labelVersion = new JLabel("Version: "+Version.version);
@@ -253,6 +289,12 @@ public class HackRFSweepSettingsUI extends JPanel
 		JLabel lblSpectrLineThickness = new JLabel("Spectr. Line Thickness");
 		tab2.add(lblSpectrLineThickness, "flowx,cell 0 8,growx");
 		
+		JLabel lblAutoScalePower = new JLabel("Auto-scale dB axis");
+		tab2.add(lblAutoScalePower, "flowx,cell 0 9,growx");
+
+		chckbxAutoScalePower = new JCheckBox("");
+		tab2.add(chckbxAutoScalePower, "cell 0 9,alignx right");
+
 		JLabel lblShowPeaks = new JLabel("Show peaks");
 		tab2.add(lblShowPeaks, "flowx,cell 0 10,growx");
 		
@@ -339,20 +381,41 @@ public class HackRFSweepSettingsUI extends JPanel
 		new MVCController(	(Consumer<FrequencyRange> valueChangedCall) ->  
 								frequencyRangeSelector.addPropertyChangeListener((PropertyChangeEvent evt) -> valueChangedCall.accept(frequencyRangeSelector.getFrequencyRange()) ) ,
 							(FrequencyRange newComponentValue) -> {
-								if(frequencyRangeSelector.selFreqStart.getValue() != newComponentValue.getStartMHz())
-									frequencyRangeSelector.selFreqStart.setValue(newComponentValue.getStartMHz());
-								if(frequencyRangeSelector.selFreqEnd.getValue() != newComponentValue.getEndMHz())
-									frequencyRangeSelector.selFreqEnd.setValue(newComponentValue.getEndMHz());
+								frequencyRangeSelector.applyPreset(newComponentValue.getStartMHz(),
+										newComponentValue.getEndMHz());
 							},
 							hRF.getFrequency()
 		); 
 		new MVCController(chckbxShowPeaks, hRF.isChartsPeaksVisible());
+		new MVCController(chckbxAutoScalePower, hRF.isPowerAutoScale());
 		new MVCController(chckbxFilterSpectrum, hRF.isFilterSpectrum());
 		new MVCController(chckbxRemoveSpurs, hRF.isSpurRemoval());
 		
 		new MVCController((valueChangedCall) -> btnPause.addActionListener((event) -> valueChangedCall.accept(!hRF.isCapturingPaused().getValue())), 
 				isCapt -> btnPause.setText(!isCapt ? "Pause"  : "Resume"), 
 				hRF.isCapturingPaused());
+
+		btnRestart.addActionListener(e -> hRF.restartSweep());
+		btnStop.addActionListener(e -> {
+			hRF.releaseRadio();
+			refreshRadioCombo();
+		});
+		new MVCController(checkBoxClkout, hRF.getClkoutEnable());
+		refreshRadioCombo();
+		comboRadio.addActionListener(e -> {
+			if (syncingRadioCombo)
+				return;
+			Object sel = comboRadio.getSelectedItem();
+			String serial = (sel == null || FIRST_RADIO.equals(sel)) ? "" : sel.toString();
+			if (!serial.equals(hRF.getSelectedSerial().getValue()))
+				hRF.getSelectedSerial().setValue(serial);
+		});
+		hRF.isRadioReleased().addListener(released -> SwingUtilities.invokeLater(() -> {
+			btnStop.setEnabled(!released);
+			btnPause.setEnabled(!released);
+			btnStop.setText(released ? "Stopped" : "Stop");
+		}));
+		hRF.isRadioReleased().callObservers();
 	
 		new MVCController(spinnerPeakFallSpeed, hRF.getPeakFallRate(), in -> (Integer)in, in -> in);
 	
@@ -396,6 +459,7 @@ public class HackRFSweepSettingsUI extends JPanel
 		});
 		hRF.isPersistentDisplayVisible().callObservers();
 		
+		hRF.getRadioIdentity().addListener(id -> SwingUtilities.invokeLater(this::refreshRadioStatus));
 		hRF.registerListener(new HackRFSettings.HackRFEventAdapter()
 		{
 			@Override public void captureStateChanged(boolean isCapturing)
@@ -404,14 +468,59 @@ public class HackRFSweepSettingsUI extends JPanel
 			}
 			@Override public void hardwareStatusChanged(boolean hardwareSendingData)
 			{
-				txtHackrfConnected.setText("HackRF "+(hardwareSendingData ? "connected":"disconnected"));
+				radioSweeping = hardwareSendingData;
+				refreshRadioStatus();
 			}
-		});;
+		});
+		refreshRadioStatus();
 		
+	}
+
+	private void refreshRadioStatus() {
+		RadioIdentity id = RadioIdentity.ABSENT;
+		if (hRF != null && hRF.getRadioIdentity() != null && hRF.getRadioIdentity().getValue() != null)
+			id = hRF.getRadioIdentity().getValue();
+		txtHackrfConnected.setText(id.statusHtml());
+		ExclusiveToolTip.setText(txtHackrfConnected, id.tooltip(radioSweeping));
+	}
+
+	private void refreshRadioCombo() {
+		if (comboRadio == null || hRF == null)
+			return;
+		syncingRadioCombo = true;
+		try {
+			String current = hRF.getSelectedSerial().getValue();
+			comboRadio.removeAllItems();
+			comboRadio.addItem(FIRST_RADIO);
+			for (String serial : hRF.listRadioSerials())
+				comboRadio.addItem(serial);
+			if (current != null && !current.isEmpty())
+				comboRadio.setSelectedItem(current);
+			else
+				comboRadio.setSelectedItem(FIRST_RADIO);
+		} finally {
+			syncingRadioCombo = false;
+		}
 	}
 
 	JButton pauseButton() {
 		return btnPause;
+	}
+
+	JButton restartButton() {
+		return btnRestart;
+	}
+
+	JButton stopButton() {
+		return btnStop;
+	}
+
+	JComboBox<String> radioCombo() {
+		return comboRadio;
+	}
+
+	JCheckBox clkoutCheckBox() {
+		return checkBoxClkout;
 	}
 
 	JLabel connectedLabel() {
@@ -424,6 +533,10 @@ public class HackRFSweepSettingsUI extends JPanel
 
 	JCheckBox showPeaksCheckbox() {
 		return chckbxShowPeaks;
+	}
+
+	JCheckBox autoScaleCheckbox() {
+		return chckbxAutoScalePower;
 	}
 
 	JSpinner peakFallSpinner() {

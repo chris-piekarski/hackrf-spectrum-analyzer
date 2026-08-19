@@ -164,22 +164,20 @@ public class SpectrumSweepEngine implements HackRFSweepDataCallback {
 		}
 	}
 
-	/** Blocking native sweep until {@link #requestStop()}. */
+	/** Blocking native sweep until {@link #requestStop()} or the native start returns. */
 	public void runSweepLoop() {
 		sweepLock.lock();
 		nativeSweepActive = true;
 		try {
-			while (!forceStop) {
-				FrequencyRange range = settings.getFrequency().getValue();
-				HackRFSweepNativeBridge.start(this, range.getStartMHz(), range.getEndMHz(),
-						settings.getFFTBinHz().getValue(), settings.getSamples().getValue(),
-						settings.getGainLNA().getValue(), settings.getGainVGA().getValue(),
-						settings.getAntennaPowerEnable().getValue(), settings.getAntennaLNA().getValue());
-				if (!forceStop)
-					Thread.sleep(1000);
-			}
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
+			if (forceStop)
+				return;
+			FrequencyRange range = settings.getFrequency().getValue();
+			HackRFSweepNativeBridge.configure(settings.getSelectedSerial().getValue(),
+					settings.getClkoutEnable().getValue());
+			HackRFSweepNativeBridge.start(this, range.getStartMHz(), range.getEndMHz(),
+					settings.getFFTBinHz().getValue(), settings.getSamples().getValue(),
+					settings.getGainLNA().getValue(), settings.getGainVGA().getValue(),
+					settings.getAntennaPowerEnable().getValue(), settings.getAntennaLNA().getValue());
 		} finally {
 			nativeSweepActive = false;
 			sweepLock.unlock();

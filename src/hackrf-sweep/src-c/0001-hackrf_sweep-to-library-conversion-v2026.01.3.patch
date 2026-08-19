@@ -4,11 +4,12 @@ Date: Tue, 18 Aug 2026 00:00:00 +0000
 Subject: [PATCH] hackrf_sweep to library conversion v2026.01.3
 
 Rebased from the v2024.02.1 library-mode patch onto GSG v2026.01.3
-(num_fft_bins rename, stdbool.h, Ctrl+Break).
+(num_fft_bins rename, stdbool.h, Ctrl+Break). Adds lib_config for
+serial selection and CLKOUT.
 
 ---
 diff --git a/host/hackrf-tools/src/hackrf_sweep.c b/host/hackrf-tools/src/hackrf_sweep.c
-index 38efa223..e59ef63c 100644
+index 38efa223..4e252f8d 100644
 --- a/host/hackrf-tools/src/hackrf_sweep.c
 +++ b/host/hackrf-tools/src/hackrf_sweep.c
 @@ -20,7 +20,7 @@
@@ -155,15 +156,31 @@ index 38efa223..e59ef63c 100644
  	return 0;
  }
  
-@@ -459,7 +545,34 @@ int export_wisdom(const char* path)
+@@ -459,7 +545,50 @@ int export_wisdom(const char* path)
  	return 1;
  }
  
 +#ifdef HACKRF_SWEEP_AS_LIBRARY
 +
++static char lib_serial[64];
++static const char* lib_serial_ptr = NULL;
++static unsigned int lib_clkout = 0;
++
 +void hackrf_sweep_lib_stop()
 +{
 +	do_exit = true;
++}
++
++void hackrf_sweep_lib_config(const char* serial_number, unsigned int clkout_enable)
++{
++	if (serial_number == NULL || serial_number[0] == '\0') {
++		lib_serial[0] = '\0';
++		lib_serial_ptr = NULL;
++	} else {
++		snprintf(lib_serial, sizeof(lib_serial), "%s", serial_number);
++		lib_serial_ptr = lib_serial;
++	}
++	lib_clkout = clkout_enable ? 1 : 0;
 +}
 +
 +/**
@@ -190,7 +207,7 @@ index 38efa223..e59ef63c 100644
  {
  	int opt, i, result = 0;
  	const char* path = NULL;
-@@ -469,13 +582,58 @@ int main(int argc, char** argv)
+@@ -469,13 +598,59 @@ int main(int argc, char** argv)
  	struct timeval time_prev;
  	float time_diff;
  	float sweep_rate = 0;
@@ -209,6 +226,7 @@ index 38efa223..e59ef63c 100644
 +	binary_output = true;
 +	fft_bin_width = _fft_bin_width;
 +	num_ranges = 0;
++	serial_number = lib_serial_ptr;
 +
 +	if (freq_min >= freq_max) {
 +		fprintf(stderr,
@@ -249,7 +267,7 @@ index 38efa223..e59ef63c 100644
  	while ((opt = getopt(argc, argv, "a:f:p:l:g:d:N:w:W:P:n1BIr:h?")) != EOF) {
  		result = HACKRF_SUCCESS;
  		switch (opt) {
-@@ -599,6 +757,7 @@ int main(int argc, char** argv)
+@@ -599,6 +774,7 @@ int main(int argc, char** argv)
  			return EXIT_FAILURE;
  		}
  	}
@@ -257,7 +275,7 @@ index 38efa223..e59ef63c 100644
  
  	// Try to load a wisdom file if specified, otherwise
  	// try to load the system-wide wisdom file
-@@ -714,6 +873,52 @@ int main(int argc, char** argv)
+@@ -714,6 +890,52 @@ int main(int argc, char** argv)
  	}
  #endif
  
@@ -310,7 +328,26 @@ index 38efa223..e59ef63c 100644
  	result = hackrf_init();
  	if (result != HACKRF_SUCCESS) {
  		fprintf(stderr,
-@@ -752,16 +957,20 @@ int main(int argc, char** argv)
+@@ -734,6 +956,18 @@ int main(int argc, char** argv)
+ 		return EXIT_FAILURE;
+ 	}
+ 
++#ifdef HACKRF_SWEEP_AS_LIBRARY
++	if (lib_clkout) {
++		result = hackrf_set_clkout_enable(device, 1);
++		if (result != HACKRF_SUCCESS) {
++			fprintf(stderr,
++				"hackrf_set_clkout_enable() failed: %s (%d)\n",
++				hackrf_error_name(result),
++				result);
++		}
++	}
++#endif
++
+ 	if ((NULL == path) || (strcmp(path, "-") == 0)) {
+ 		outfile = stdout;
+ 	} else {
+@@ -752,16 +986,20 @@ int main(int argc, char** argv)
  		return EXIT_FAILURE;
  	}
  
@@ -333,7 +370,7 @@ index 38efa223..e59ef63c 100644
  	fprintf(stderr,
  		"call hackrf_sample_rate_set(%.03f MHz)\n",
  		((float) DEFAULT_SAMPLE_RATE_HZ / (float) FREQ_ONE_MHZ));
-@@ -885,7 +1094,18 @@ int main(int argc, char** argv)
+@@ -885,7 +1123,18 @@ int main(int argc, char** argv)
  	fprintf(stderr, "Stop with Ctrl-C\n");
  	while ((hackrf_is_streaming(device) == HACKRF_TRUE) && (do_exit == false)) {
  		float time_difference;
@@ -352,7 +389,7 @@ index 38efa223..e59ef63c 100644
  
  		gettimeofday(&time_now, NULL);
  		if (TimevalDiff(&time_now, &time_prev) >= 1.0f) {
-@@ -947,7 +1167,9 @@ int main(int argc, char** argv)
+@@ -947,7 +1196,9 @@ int main(int argc, char** argv)
  
  	fflush(outfile);
  	if ((outfile != NULL) && (outfile != stdout)) {
@@ -362,7 +399,7 @@ index 38efa223..e59ef63c 100644
  		outfile = NULL;
  		fprintf(stderr, "fclose() done\n");
  	}
-@@ -958,6 +1180,14 @@ int main(int argc, char** argv)
+@@ -958,6 +1209,14 @@ int main(int argc, char** argv)
  	fftwf_free(ifftwIn);
  	fftwf_free(ifftwOut);
  	export_wisdom(fftwWisdomPath);

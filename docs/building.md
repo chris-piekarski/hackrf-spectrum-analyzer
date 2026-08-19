@@ -58,6 +58,8 @@ You will also need the HackRF sources (handled automatically by the build via su
 | `firmware-update` | Official GSG flash (dry-run; `CONFIRM=1` writes) |
 | `udev`            | Install persistent HackRF udev rules (sudo) |
 | `lint`          | Maven compile check                 |
+| `stats`         | Refresh [docs/stats.md](stats.md) (LOC, packages, tests, git) |
+| `mermaid`       | Parse-check all first-party Mermaid diagrams |
 | `start`         | Launch the Linux app                |
 | `run`           | Alias for `start`                   |
 

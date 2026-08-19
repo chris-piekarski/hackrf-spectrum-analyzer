@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import jspectrumanalyzer.core.RadioIdentity;
+
 class HackRFDeviceQueryTest {
 
 	@Test
@@ -50,6 +52,23 @@ class HackRFDeviceQueryTest {
 		assertTrue(HackRFDeviceQuery.meetsMinimumFirmware("2025.01.1", HackRFDeviceQuery.MIN_FIRMWARE));
 		assertFalse(HackRFDeviceQuery.meetsMinimumFirmware("2018.01.1", HackRFDeviceQuery.MIN_FIRMWARE));
 		assertFalse(HackRFDeviceQuery.meetsMinimumFirmware("unknown", HackRFDeviceQuery.MIN_FIRMWARE));
+	}
+
+	@Test
+	void absentQueryMapsToAbsentIdentity() {
+		assertFalse(new HackRFDeviceQuery.Info(-1, -1, null, 0, 0xFF, null, null, null, null).toIdentity().present);
+	}
+
+	@Test
+	void openedInfoMapsBoardFirmwareAndSerial() {
+		HackRFDeviceQuery.Info info = new HackRFDeviceQuery.Info(0, 0, "v2026.01.3", 0x0110, 2, "HackRF One",
+				"2026.01.3", "git", "0000000000000000a1b2c3d4e5f60708");
+		RadioIdentity id = info.toIdentity();
+		assertTrue(id.present);
+		assertEquals("HackRF One", id.displayBoard());
+		assertEquals("2026.01.3", id.displayFirmware());
+		assertEquals("e5f60708", id.shortSerial());
+		assertEquals("1.16", id.usbApi);
 	}
 
 	@Test

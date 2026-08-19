@@ -5,56 +5,48 @@ flowchart LR
     A[Clone + make help] --> B[Install deps + udev/firmware]
     B --> C[make build]
     C --> D[make start]
-    D --> E[Connect HackRF<br/>Enjoy spectrum!]
+    D --> E[Plug in the radio<br/>watch the spectrum]
 ```
 
-This guide will get you up and running with the HackRF Spectrum Analyzer GUI.
+Turn a HackRF into a live spectrum and waterfall display.
 
-## Prerequisites
+## What you need
 
 ### Hardware
 - HackRF One (or compatible)
-- Recommended firmware: **v2024.02.1** or newer (host SDK is pinned to **v2026.01.3**)
+- Firmware **v2024.02.1** or newer (this app matches host SDK **v2026.01.3**)
 
 ### Software
-- Java 21+ (headful OpenJDK / Temurin, not a headless JRE)
-- For building from source (recommended for Linux):
-  - Maven
-  - GCC toolchain + mingw-w64 (for cross-compiling Windows natives)
-  - libusb-1.0, libfftw3, etc. (see [building.md](building.md))
+- Java 21+ with a desktop (OpenJDK / Temurin — not a headless JRE)
+- To build on Linux: Maven, GCC, mingw-w64 (for the Windows natives), libusb and FFTW — see [building.md](building.md)
 
-## Quick Start (Pre-built)
-
-1. Download the latest release from the upstream project (or build this fork).
-2. **Windows**:
-   - Install HackRF drivers with Zadig (if on Windows 10 or earlier).
-   - Run the provided `.cmd` launcher.
-3. **Linux**:
-   - Ensure udev rules are set up for the HackRF (see [hackrf-setup.md](hackrf-setup.md)).
-   - Run the provided launcher script after extracting.
-
-## Building from Source
-
-See the detailed [building.md](building.md) guide.
+## Fastest path
 
 From the repository root:
 
 ```bash
-make help          # See all available targets
-make info          # Confirm the HackRF, show app SDK/API pin, check for firmware/SDK updates
-make build
-make start         # Builds (if needed) and launches the Linux app
+make help          # every target, with descriptions
+make info          # confirm the radio, firmware, and SDK pin
+make udev          # Linux once: persistent USB permissions
+make start         # build if needed, then launch
 ```
 
-## First Run Tips
+The sidebar shows the board name, short serial, and firmware when the radio opens. Hover that line for the full serial and USB API.
 
-- The app should detect your HackRF automatically when plugged in with correct permissions.
-- Use the **Quick Select** buttons (added in this fork) for common bands (WiFi, LTE, FM, etc.).
-- The **Antenna LNA +14dB** checkbox enables the external amplifier on supported hardware.
-- Change any setting — the sweep automatically restarts.
+## If you already have a zip / installer
 
-## Next Steps
+1. **Windows**: install the WinUSB driver with Zadig if Windows has not claimed the device. Run the `.cmd` launcher in the package.
+2. **Linux**: set udev rules ([hackrf-setup.md](hackrf-setup.md)), then run the launcher script.
 
-- [Usage & Features](usage.md)
-- [HackRF Hardware Setup](hackrf-setup.md)
-- [Development](development.md) if you want to contribute or customize
+## First run
+
+- Plug the radio in before you click around. The sweep starts on its own.
+- **Quick Select** jumps to common bands (Wi‑Fi, LTE, FM, amateur 2 m / 70 cm, …). Hover a button for the MHz range. Details: [usage.md](usage.md).
+- **Antenna LNA +14 dB** turns on the amplifier on the radio. Use it when the signal is weak; skip it on strong local transmitters.
+- Changing start/end frequency, gain, or FFT bin retunes automatically.
+
+## Next
+
+- [Usage](usage.md) — buttons, gain, and the status line
+- [Radio setup](hackrf-setup.md) — firmware, udev, Zadig
+- [Development](development.md) — if you are changing the code
