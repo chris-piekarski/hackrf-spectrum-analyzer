@@ -116,8 +116,10 @@ public class DatasetSpectrum implements Cloneable
 	}
 
 	/**
-	 * Chart series. Unfilled hop holes become NaN (no baseline spike).
-	 * {@code maxPoints} caps vertices to about one per pixel on wide spans.
+	 * Chart series. Full-resolution traces keep raw bin values (including
+	 * unfilled hop init) so FM/Wi-Fi peaks stay connected the way they
+	 * used to. Wide spans downsample to about one vertex per pixel and
+	 * drop empty buckets.
 	 */
 	public XYSeriesImmutable createSpectrumDataset(String name, int maxPoints) {
 		return toChartSeries(name, spectrum, maxPoints);
@@ -133,11 +135,11 @@ public class DatasetSpectrum implements Cloneable
 		float[] yValues = new float[out];
 		if (out == n)
 		{
-			for (int i = 0; i < n; i++)
-			{
-				xValues[i] = freq[i];
-				yValues[i] = chartSample(ySource[i]);
-			}
+			// Same as the historic path: do not NaN-out holes here.
+			// JFreeChart breaks the line on NaN and FM looks like a flat
+			// noise dash in each 5 MHz hop slice.
+			System.arraycopy(freq, 0, xValues, 0, n);
+			System.arraycopy(ySource, 0, yValues, 0, n);
 		}
 		else
 		{
@@ -184,11 +186,6 @@ public class DatasetSpectrum implements Cloneable
 	public static boolean isChartHole(float y)
 	{
 		return !Float.isFinite(y) || y <= SpectrumPowerScale.EMPTY_CEILING;
-	}
-
-	static float chartSample(float y)
-	{
-		return isChartHole(y) ? Float.NaN : y;
 	}
 	
 	/**
