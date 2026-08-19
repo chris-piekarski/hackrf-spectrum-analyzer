@@ -41,6 +41,18 @@ class SpectrumPowerScaleTest {
 	}
 
 	@Test
+	void shallowFmBandStillGetsATightDisplayWindow() {
+		DatasetSpectrum ds = new DatasetSpectrum(100_000f, 88, 108, -150f);
+		for (int i = 0; i < ds.spectrumLength(); i++)
+			ds.getSpectrumArray()[i] = -83.5f;
+		ds.getSpectrumArray()[50] = -67.5f;
+		SpectrumPowerScale scale = SpectrumPowerScale.fromDataset(ds).displayTicks();
+		assertTrue(scale.span() <= 60f, "16 dB FM contrast must not sit in a 70+ dB window");
+		assertTrue(scale.highDb <= -50f);
+		assertTrue(scale.lowDb >= -110f);
+	}
+
+	@Test
 	void displayTicksSnapToTenDb() {
 		SpectrumPowerScale ticks = new SpectrumPowerScale(-63.2f, -31.1f).displayTicks();
 		assertEquals(0f, ticks.lowDb % 10f, 0.001f);

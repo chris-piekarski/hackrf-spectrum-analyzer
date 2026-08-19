@@ -84,6 +84,9 @@ public interface HackRFSettings {
 	/** Live dB-axis auto-scale. Off = fixed −100…+20. */
 	public ModelValueBoolean isPowerAutoScale();
 
+	/** Live LNA/VGA AGC. Off = operator sliders. */
+	public ModelValueBoolean isAutoGain();
+
 	public ModelValueBoolean isFilterSpectrum();
 
 	public ModelValueBoolean isSpurRemoval();

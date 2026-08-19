@@ -14,6 +14,33 @@ That builds if needed and opens the window. You can also run the packaged launch
 
 Windows ships a `.cmd` next to it. The filename is leftover from the native library; the window title is just **Spectrum Analyzer**.
 
+## MCP (agents)
+
+The running app can expose a **read-only** Model Context Protocol server so an agent can pull the same sweep the plot is showing. It does **not** open a second radio.
+
+```bash
+make mcp                 # GUI + listen on 127.0.0.1:8765
+# or
+./src/hackrf-sweep/build/hackrf-spectrum-analyzer/hackrf_sweep_spectrum_analyzer_linux.sh --mcp
+# optional: --mcp-port=8765   --mcp-stdio
+```
+
+Point a local MCP client at the stdio proxy (the GUI must already be listening):
+
+```json
+{
+  "mcpServers": {
+    "spectrum-analyzer": {
+      "command": "python3",
+      "args": ["scripts/mcp-spectrum-proxy.py"],
+      "env": { "SPECTRUM_MCP_PORT": "8765" }
+    }
+  }
+}
+```
+
+Tools: `spectrum_summary`, `spectrum_snapshot` (optional `maxPoints`, `minDbm`), `radio_identity`, `sweep_config` (radio vs display), `fm_stations`. Unfilled hop holes are omitted, not reported as −150 dBm. Snapshots are sampled at most 10 times per second. Agents cannot change frequency or gain in v1.
+
 ## What you are looking at
 
 ```mermaid
@@ -27,8 +54,8 @@ flowchart LR
     Controls --> Java
 ```
 
-- **Spectrum** — power vs frequency for the current sweep. The **dB axis is −100…+20** by default (10 dB ticks). Turn on **Auto-scale dB axis** under Chart options to fit the live band: 20 dB of pad, edges locked to multiples of 10, hold through wobble and bursty peaks, open a tick only if a signal would clip, and shrink at most one 10 dB tick every few seconds if that whole stretch stayed quiet. **Drag horizontally** on the plot to zoom that frequency span (the radio retunes; start/end digits follow). **Double-click** or **scroll down** to zoom out one step; **scroll up** zooms in around the cursor. Quick Select clears the zoom stack. When the view is **wider than a single Quick Select button**, those presets are drawn as labeled vertical bands (FM, WiFi 2, LTE-1, 2m, …). Names sit in the **top header**, same as Wi-Fi / FM channel labels. ITU survey envelopes (HF/VHF/UHF) are lighter. A band that fills the plot is omitted so it does not cover the whole screen. Wi-Fi overlay marks the **occupied 20 MHz** of each US channel (ch N starts at center−10 MHz). On 2.4 GHz those slices overlap every 5 MHz (ch 1 is 2402–2422, ch 2 is 2407–2427, ch 11 is 2452–2472). On 5 GHz the 20 MHz channels do not overlap. The empty stretch after channel 64 is U-NII-2B (5350–5470, weather radar) plus unused 5330–5490, not a wide channel. 1 / 6 / 11 and 36 / 48 / 149 / 165 are brighter. On **FM**, only stations seen in the live sweep are marked — and only when the view is zoomed to that band (about 30 MHz or less), so a wide survey does not fill the header with unreadable 97.3 tags. Each peak is snapped to the US 200 kHz dial (47 CFR 73.201) and labeled like **97.3**. Confidence rises over a few tenths of a second of repeated hits and decays over about two seconds after the peak drops, so a one-sweep flash is not labeled. Empty channels stay unlabeled. Use a finer FFT bin (100 kHz or less) so adjacent odd-tenths separate.
-- **Waterfall** — the same range over time (newest at the top)
+- **Spectrum** — power vs frequency for the current sweep. **Auto gain** (default) sets LNA then VGA so the live peak sits near −28 dBm for this Quick Select. The **dB axis auto-scales** the live band (10 dB pad, 10 dB ticks). Turn **Auto-scale dB axis** off under Chart options for a fixed **−100…+20** window. When auto-scale is on, the **waterfall palette** uses the same window so FM/Wi-Fi peaks are not crushed into the blue end of a fixed −90…−25 scale. Auto-scale holds through wobble and bursty peaks, opens a tick only if a signal would clip, and shrinks at most one 10 dB tick every few seconds if that whole stretch stayed quiet. **Drag horizontally** on the plot to zoom that frequency span (the radio retunes; start/end digits follow). **Double-click** or **scroll down** to zoom out one step; **scroll up** zooms in around the cursor. The axis updates immediately; the radio waits ~120 ms after the last zoom/Quick Select so a wheel flick is one retune, and the last sweep stays on screen until the new window’s first full sweep arrives. Quick Select clears the zoom stack. When the view is **wider than a single Quick Select button**, those presets are drawn as labeled vertical bands (FM, WiFi 2, LTE-1, 2m, …). Names sit in the **top header**, same as Wi-Fi / FM channel labels. ITU survey envelopes (HF/VHF/UHF) are lighter. A band that fills the plot is omitted so it does not cover the whole screen. Wi-Fi overlay marks the **occupied 20 MHz** of each US channel (ch N starts at center−10 MHz). On 2.4 GHz those slices overlap every 5 MHz (ch 1 is 2402–2422, ch 2 is 2407–2427, ch 11 is 2452–2472). On 5 GHz the 20 MHz channels do not overlap. The empty stretch after channel 64 is U-NII-2B (5350–5470, weather radar) plus unused 5330–5490, not a wide channel. 1 / 6 / 11 and 36 / 48 / 149 / 165 are brighter. The radio’s 20 MHz interleaved hop is padded ±10 MHz under the requested window so FM 88–108 is actually filled (otherwise 97.3 sits in a 93–98 MHz hole). On **FM**, only stations seen in the live sweep are marked — and only when the view is zoomed to that band (about 30 MHz or less), so a wide survey does not fill the header with unreadable 97.3 tags. Each peak is snapped to the US 200 kHz dial (47 CFR 73.201) and labeled like **97.3**. Confidence rises over a few tenths of a second of repeated hits and decays over about two seconds after the peak drops, so a one-sweep flash is not labeled. Empty channels stay unlabeled. Use a finer FFT bin (100 kHz or less) so adjacent odd-tenths separate.
+- **Waterfall** — the same range over time (newest at the top). A **time scale** on the left (in the gutter under the dB axis) marks **now**, then 1s / 2s / 5s / … down the history. Hover a row to see its age next to the frequency readout. Pause freezes both the raster and the ages.
 - **Status bar** — resolution, FFT bin count, waterfall rate, peak power
 - **Sidebar** — band presets, start/end frequency, radio identity, Pause, then gain and display options
 
@@ -87,13 +114,14 @@ This app only **receives**. Transmitting on amateur frequencies needs a license 
 
 | Control | What it does |
 |---|---|
-| **LNA Gain / VGA Gain** | Analog gain on the radio. Start mid-range; raise LNA first if the noise floor is too low. |
+| **Auto gain** | On (default): pick LNA then VGA for the current Quick Select so the peak sits near **−28 dBm**. Clipping steps down immediately; Wi‑Fi packets are remembered for ~1.5 s so a quiet gap does not pump the gain. Uncheck to use the sliders. Does not touch Antenna power or the +14 dB RF amp. |
+| **LNA Gain / VGA Gain** | Analog gain on the radio (locked while Auto is on). Raise LNA first if you take over manually. |
 | **FFT Bin** | Resolution bandwidth. Narrower bins = more detail, slower sweeps. Floor is about 2445 Hz on current firmware. |
 | **Number of samples** | Averages per tuning step. Higher is smoother and slower. |
 | **Antenna power** | Bias tee — DC on the antenna port for a powered preamp. Do not enable into a DC-shorted antenna. |
 | **Antenna LNA +14 dB** | Onboard RF amplifier. Helpful for weak signals; overloads easily next to a broadcast tower. |
 | **Spur removal** | Hides repeating HackRF artifacts. |
-| **Auto-scale dB axis** | Off (default): power scale stays **−100…+20**. On: fit the live band, 10 dB ticks, 20 dB pad. |
+| **Auto-scale dB axis** | On (default): fit the live band, 10 dB ticks, 10 dB pad. Off: power scale stays **−100…+20**. Waterfall colors follow this window. |
 | **Persistent display** | Slow decay overlay of earlier sweeps. |
 | **Waterfall palette** | Maps dB to color. |
 | **Allocation overlay** | EU or USA band labels on the spectrum. |

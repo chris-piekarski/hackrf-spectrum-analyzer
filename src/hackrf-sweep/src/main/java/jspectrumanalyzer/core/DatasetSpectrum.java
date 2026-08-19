@@ -24,6 +24,7 @@ public class DatasetSpectrum implements Cloneable
 	protected  final int	freqStopMHz;
 	protected  float[]		spectrum;
 	protected  float		spectrumInitPower;
+	private float[]			cachedFreqMHz;
 	
 	/**
 	 * Inits
@@ -111,15 +112,82 @@ public class DatasetSpectrum implements Cloneable
 	 * @return
 	 */
 	public XYSeriesImmutable createSpectrumDataset(String name) {
-		float[] xValues	= new float[spectrum.length];
-		float[] yValues	= spectrum;
-		for (int i = 0; i < spectrum.length; i++)
+		return createSpectrumDataset(name, Integer.MAX_VALUE);
+	}
+
+	/**
+	 * Chart series. Full-resolution traces keep raw bin values (including
+	 * unfilled hop init) so FM/Wi-Fi peaks stay connected the way they
+	 * used to. Wide spans downsample to about one vertex per pixel and
+	 * drop empty buckets.
+	 */
+	public XYSeriesImmutable createSpectrumDataset(String name, int maxPoints) {
+		return toChartSeries(name, spectrum, maxPoints);
+	}
+
+	protected XYSeriesImmutable toChartSeries(String name, float[] ySource, int maxPoints) {
+		int n = ySource.length;
+		if (n == 0)
+			return new XYSeriesImmutable(name, new float[0], new float[0]);
+		float[] freq = frequencyAxisMHz();
+		int out = maxPoints < 1 ? n : Math.min(n, maxPoints);
+		float[] xValues = new float[out];
+		float[] yValues = new float[out];
+		if (out == n)
 		{
-			float freq = (freqStartHz + fftBinSizeHz * i) / 1000000f;
-			xValues[i]	= freq;
+			for (int i = 0; i < n; i++)
+			{
+				xValues[i] = freq[i];
+				// Break the line on unfilled hop holes so −150 dB does not
+				// drag the trace to the floor. Auto-scale ignores holes.
+				yValues[i] = isChartHole(ySource[i]) ? Float.NaN : ySource[i];
+			}
 		}
-		XYSeriesImmutable xySeriesF	= new XYSeriesImmutable(name, xValues, yValues);
-		return xySeriesF;
+		else
+		{
+			for (int p = 0; p < out; p++)
+			{
+				int i0 = (int) ((long) p * n / out);
+				int i1 = Math.max(i0 + 1, (int) ((long) (p + 1) * n / out));
+				float peak = Float.NEGATIVE_INFINITY;
+				float xAt = freq[i0];
+				boolean any = false;
+				for (int i = i0; i < i1 && i < n; i++)
+				{
+					float y = ySource[i];
+					if (isChartHole(y))
+						continue;
+					any = true;
+					if (y > peak)
+					{
+						peak = y;
+						xAt = freq[i];
+					}
+				}
+				xValues[p] = xAt;
+				yValues[p] = any ? peak : Float.NaN;
+			}
+		}
+		return new XYSeriesImmutable(name, xValues, yValues);
+	}
+
+	public float[] frequencyAxisMHz()
+	{
+		if (cachedFreqMHz == null || cachedFreqMHz.length != spectrum.length)
+		{
+			float[] axis = new float[spectrum.length];
+			float binMHz = fftBinSizeHz / 1_000_000f;
+			float startMHz = freqStartHz / 1_000_000f;
+			for (int i = 0; i < axis.length; i++)
+				axis[i] = startMHz + binMHz * i;
+			cachedFreqMHz = axis;
+		}
+		return cachedFreqMHz;
+	}
+
+	public static boolean isChartHole(float y)
+	{
+		return !Float.isFinite(y) || y <= SpectrumPowerScale.EMPTY_CEILING;
 	}
 	
 	/**

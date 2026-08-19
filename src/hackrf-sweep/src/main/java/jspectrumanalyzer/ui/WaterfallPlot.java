@@ -2,6 +2,8 @@ package jspectrumanalyzer.ui;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -14,6 +16,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
+import java.util.List;
 
 import javax.swing.JPanel;
 
@@ -32,6 +35,7 @@ public class WaterfallPlot extends JPanel {
 	private boolean				displayMarker			= false;
 	private double				displayMarkerFrequency	= 0;
 	private int					displayMarkerX			= 0;
+	private int					displayMarkerY			= 0;
 	private int					drawIndex				= 0;
 	/**
 	 * stores max value in pixel
@@ -47,6 +51,9 @@ public class WaterfallPlot extends JPanel {
 	private int					screenWidth;
 	private double				spectrumPaletteSize		= 65;
 	private double				spectrumPaletteStart	= -90;
+	private long[]				rowEpochMs;
+	private static final Color	TIME_AXIS_COLOR			= new Color(0xBB, 0xBB, 0xBB);
+	private static final int	TIME_AXIS_MIN_GUTTER	= 28;
 
 	public WaterfallPlot(ChartPanel chartPanel, int maxHeight) {
 		setPreferredSize(new Dimension(100, 200));
@@ -64,6 +71,7 @@ public class WaterfallPlot extends JPanel {
 
 		bufferedImages[0] = GraphicsToolkit.createAcceleratedImageOpaque(screenWidth, maxHeight);
 		bufferedImages[1] = GraphicsToolkit.createAcceleratedImageOpaque(screenWidth, maxHeight);
+		rowEpochMs = new long[Math.max(1, maxHeight)];
 
 		/**
 		 * setup frequency marker
@@ -81,6 +89,7 @@ public class WaterfallPlot extends JPanel {
 					displayMarker = true;
 					displayMarkerFrequency = freq;
 					displayMarkerX = x;
+					displayMarkerY = e.getY();
 				}
 				WaterfallPlot.this.repaint();
 			}
@@ -117,6 +126,7 @@ public class WaterfallPlot extends JPanel {
 		g.drawImage(previousImage, 0, 1, null);
 		g.setColor(Color.black);
 		g.fillRect(0, 0, (int) width, 1);
+		shiftRowTimes(System.currentTimeMillis());
 
 		float binWidth = (float) (spectrum.getFFTBinSizeHz() / freqRange * width);
 		rect.x = 0;
@@ -246,6 +256,22 @@ public class WaterfallPlot extends JPanel {
 		return fps.getEma();
 	}
 
+	/** Drop scrolled history (used on retune so old MHz mapping is not reused). */
+	public synchronized void clearHistory() {
+		for (BufferedImage image : bufferedImages) {
+			if (image == null)
+				continue;
+			Graphics2D g = image.createGraphics();
+			g.setColor(Color.black);
+			g.fillRect(0, 0, image.getWidth(), image.getHeight());
+			g.dispose();
+		}
+		lastSpectrum = null;
+		lastBinCount = 0;
+		if (rowEpochMs != null)
+			Arrays.fill(rowEpochMs, 0L);
+	}
+
 	public synchronized void setHistorySize(int historyInPixels) {
 		BufferedImage bufferedImages[] = new BufferedImage[2];
 		bufferedImages[0] = GraphicsToolkit.createAcceleratedImageOpaque(screenWidth, historyInPixels);
@@ -253,6 +279,7 @@ public class WaterfallPlot extends JPanel {
 		copyImage(this.bufferedImages[0], bufferedImages[0]);
 		copyImage(this.bufferedImages[1], bufferedImages[1]);
 		this.bufferedImages = bufferedImages;
+		ensureRowTimes(Math.max(1, historyInPixels));
 	}
 
 	public void setSpectrumPaletteSize(int dB) {
@@ -267,6 +294,43 @@ public class WaterfallPlot extends JPanel {
 	 */
 	public void setSpectrumPaletteStart(int dB) {
 		this.spectrumPaletteStart = dB;
+	}
+
+	/**
+	 * Map the waterfall palette onto a live dB window (same bounds as the
+	 * spectrum Y-axis) so a 15 dB FM band is not crushed into the blue
+	 * third of a fixed −90…−25 scale.
+	 */
+	public void applyPowerWindow(double lowDb, double highDb) {
+		setSpectrumPaletteStart(paletteStartDb(lowDb));
+		setSpectrumPaletteSize(paletteSizeDb(lowDb, highDb));
+	}
+
+	public static int paletteStartDb(double lowDb) {
+		return (int) Math.round(lowDb);
+	}
+
+	public static int paletteSizeDb(double lowDb, double highDb) {
+		int span = (int) Math.round(highDb - lowDb);
+		return Math.max(1, span);
+	}
+
+	private void ensureRowTimes(int historyInPixels) {
+		int n = Math.max(1, historyInPixels);
+		if (rowEpochMs != null && rowEpochMs.length == n)
+			return;
+		long[] next = new long[n];
+		if (rowEpochMs != null)
+			System.arraycopy(rowEpochMs, 0, next, 0, Math.min(rowEpochMs.length, n));
+		rowEpochMs = next;
+	}
+
+	private void shiftRowTimes(long nowMs) {
+		int hist = bufferedImages[drawIndex].getHeight();
+		ensureRowTimes(hist);
+		if (rowEpochMs.length > 1)
+			System.arraycopy(rowEpochMs, 0, rowEpochMs, 1, rowEpochMs.length - 1);
+		rowEpochMs[0] = nowMs;
 	}
 
 	private void copyImage(BufferedImage src, BufferedImage dst) {
@@ -301,13 +365,9 @@ public class WaterfallPlot extends JPanel {
 	public static double translateXToFrequency(int x, int chartWidth, double startFreqHz, double stopFreqHz) {
 		if (chartWidth <= 0)
 			return -1;
-		double freqRange = (stopFreqHz - startFreqHz);
-		double freq = (x / (double) chartWidth) * freqRange + startFreqHz;
-		if (freq > stopFreqHz)
-			freq = stopFreqHz;
-		if (freq < startFreqHz)
-			freq = startFreqHz;
-		return freq;
+		jspectrumanalyzer.core.FrequencyAxis axis = jspectrumanalyzer.core.FrequencyAxis.of(startFreqHz / 1_000_000d,
+				stopFreqHz / 1_000_000d, chartWidth);
+		return axis.xToMhz(x) * 1_000_000d;
 	}
 
 	private double translateChartXToFrequency(int x) {
@@ -317,6 +377,42 @@ public class WaterfallPlot extends JPanel {
 			return translateXToFrequency(x, chartWidth, startFreq, stopFreq);
 		}
 		return -1;
+	}
+
+	void drawTimeAxis(Graphics2D g, long[] times, int height) {
+		int gutter = chartXOffset;
+		if (gutter < TIME_AXIS_MIN_GUTTER || height < 8)
+			return;
+		List<WaterfallTimeScale.Tick> ticks = WaterfallTimeScale.ticks(times, height,
+				WaterfallTimeScale.DEFAULT_MAX_TICKS);
+		if (ticks.isEmpty())
+			return;
+		g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		Font font = getFont() == null ? new Font(Font.SANS_SERIF, Font.PLAIN, 11) : getFont().deriveFont(Font.PLAIN, 11f);
+		g.setFont(font);
+		g.setColor(TIME_AXIS_COLOR);
+		FontMetrics fm = g.getFontMetrics();
+		int axisX = gutter - 1;
+		g.drawLine(axisX, 0, axisX, height);
+		int ascent = fm.getAscent();
+		for (WaterfallTimeScale.Tick tick : ticks) {
+			int y = tick.y;
+			if (y < 0)
+				y = 0;
+			if (y > height - 1)
+				y = height - 1;
+			g.drawLine(axisX - 4, y, axisX, y);
+			int tw = fm.stringWidth(tick.label);
+			int tx = axisX - 6 - tw;
+			if (tx < 2)
+				tx = 2;
+			int ty = y + ascent / 2;
+			if (ty < ascent)
+				ty = ascent;
+			if (ty > height - 2)
+				ty = height - 2;
+			g.drawString(tick.label, tx, ty);
+		}
 	}
 
 	@Override
@@ -331,11 +427,19 @@ public class WaterfallPlot extends JPanel {
 
 		g.drawImage(bufferedImages[drawIndex], chartXOffset, 0, w, h, null);
 
+		long[] times;
+		synchronized (this) {
+			times = rowEpochMs == null ? null : rowEpochMs.clone();
+		}
+		drawTimeAxis(g, times, h);
+
 		if (displayMarker) {
 			g.setColor(Color.gray);
 			g.drawLine(displayMarkerX, 0, displayMarkerX, h);
-			g.drawString(String.format("%.1fMHz", displayMarkerFrequency / 1000000.0), displayMarkerX + 5, h / 2);
-		} //finish marker 
+			double age = WaterfallTimeScale.ageAtY(times, h, displayMarkerY);
+			g.drawString(String.format("%.1f MHz  %s", displayMarkerFrequency / 1000000.0,
+					WaterfallTimeScale.formatAge(age)), displayMarkerX + 5, Math.max(14, displayMarkerY - 6));
+		} 
 
 		long drawingTime	= System.nanoTime()-drawStart;
 		drawingTimeSum	+= drawingTime;

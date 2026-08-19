@@ -25,6 +25,8 @@ class GainPolicyTest {
 
         assertEquals(40, GainPolicy.lnaGain(100));
         assertEquals(60, GainPolicy.vgaGain(100));
+        assertEquals(100, GainPolicy.clampTotal(200));
+        assertEquals(32, GainPolicy.clampTotal(36));
     }
 
     @Test

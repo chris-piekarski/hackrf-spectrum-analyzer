@@ -23,4 +23,14 @@ class FrequencyRangeTest {
         assertNotEquals(a, null);
         assertNotEquals(a, "string");
     }
+
+    @Test
+    void interleavedPadCoversFmHopHoles() {
+        FrequencyRange nativeFm = new FrequencyRange(88, 108).forInterleavedNativeSweep();
+        assertEquals(78, nativeFm.getStartMHz());
+        assertEquals(118, nativeFm.getEndMHz());
+        FrequencyRange floor = new FrequencyRange(1, 30).forInterleavedNativeSweep();
+        assertEquals(1, floor.getStartMHz());
+        assertEquals(40, floor.getEndMHz());
+    }
 }

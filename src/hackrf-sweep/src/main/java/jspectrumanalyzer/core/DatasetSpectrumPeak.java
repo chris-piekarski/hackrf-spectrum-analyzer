@@ -62,15 +62,11 @@ public class DatasetSpectrumPeak extends DatasetSpectrum
 	
 
 	public XYSeriesImmutable createPeaksDataset(String name) {
-		float[] xValues	= new float[spectrum.length];
-		float[] yValues	= spectrumPeakHold;
-		for (int i = 0; i < spectrum.length; i++)
-		{
-			float freq = (freqStartHz + fftBinSizeHz * i) / 1000000f;
-			xValues[i]	= freq;
-		}
-		XYSeriesImmutable xySeriesF	= new XYSeriesImmutable(name, xValues, yValues);
-		return xySeriesF;
+		return createPeaksDataset(name, Integer.MAX_VALUE);
+	}
+
+	public XYSeriesImmutable createPeaksDataset(String name, int maxPoints) {
+		return toChartSeries(name, spectrumPeakHold, maxPoints);
 	}
 
 	public double calculateSpectrumPeakPower(){

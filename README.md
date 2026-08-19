@@ -1,6 +1,11 @@
 # Spectrum Analyzer
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Java](https://img.shields.io/badge/Java-21-orange.svg)](docs/building.md)
+[![HackRF SDK](https://img.shields.io/badge/HackRF_SDK-v2026.01.3-success.svg)](docs/hackrf-setup.md)
+[![Firmware](https://img.shields.io/badge/min_firmware-2024.02.1-lightgrey.svg)](docs/hackrf-setup.md)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-informational.svg)](docs/building.md)
+[![Last commit](https://img.shields.io/github/last-commit/chris-piekarski/hackrf-spectrum-analyzer/master)](https://github.com/chris-piekarski/hackrf-spectrum-analyzer/commits/master)
 
 Live spectrum and waterfall for a HackRF on the USB port.
 
@@ -74,6 +79,7 @@ make lint      # compile check
 make stats     # refresh docs/stats.md
 make mermaid   # parse-check diagrams
 make start     # launch
+make mcp       # launch with local MCP (127.0.0.1:8765)
 make info      # what is plugged in
 ```
 

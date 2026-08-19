@@ -63,6 +63,7 @@ public class HackRFSweepSettingsUI extends JPanel
 	private JSlider slider_waterfallPaletteSize;
 	private JCheckBox chckbxShowPeaks;
 	private JCheckBox chckbxAutoScalePower;
+	private JCheckBox chckbxAutoGain;
 	private JCheckBox chckbxRemoveSpurs;
 	private JButton btnPause;
 	private JButton btnRestart;
@@ -210,7 +211,12 @@ public class HackRFSweepSettingsUI extends JPanel
 		
 
 		JLabel lblGain = new JLabel("Gain [dB]");
-		tab1.add(lblGain, "cell 0 0");
+		tab1.add(lblGain, "flowx,cell 0 0,growx");
+
+		chckbxAutoGain = new JCheckBox("Auto");
+		chckbxAutoGain.setSelected(true);
+		chckbxAutoGain.setToolTipText("Pick LNA/VGA for this band so the plot is not all blue or all red.");
+		tab1.add(chckbxAutoGain, "cell 0 0,alignx right");
 
 		sliderGain = new JSlider(JSlider.HORIZONTAL, 0, 100, 2);
 		sliderGain.setFont(new Font("Monospaced", Font.BOLD, 16));
@@ -373,6 +379,15 @@ public class HackRFSweepSettingsUI extends JPanel
 						return spinnerModelFFTBinHz.getList().get(0);
 				});
 		new MVCController(sliderGain, hRF.getGain());
+		new MVCController(chckbxAutoGain, hRF.isAutoGain());
+		Runnable syncGainEditors = () -> {
+			boolean manual = !hRF.isAutoGain().getValue();
+			sliderGain.setEnabled(manual);
+			sliderGainLNA.setEnabled(manual);
+			sliderGainVGA.setEnabled(manual);
+		};
+		hRF.isAutoGain().addListener(() -> SwingUtilities.invokeLater(syncGainEditors));
+		syncGainEditors.run();
 		new MVCController(spinner_numberOfSamples, hRF.getSamples(), val -> Integer.parseInt(val.toString()), val -> val.toString());
 		new MVCController(chckbxAntennaPower, hRF.getAntennaPowerEnable());
 		new MVCController(chckbxAntennaLNA, hRF.getAntennaLNA());
@@ -537,6 +552,14 @@ public class HackRFSweepSettingsUI extends JPanel
 
 	JCheckBox autoScaleCheckbox() {
 		return chckbxAutoScalePower;
+	}
+
+	JCheckBox autoGainCheckbox() {
+		return chckbxAutoGain;
+	}
+
+	JSlider gainSlider() {
+		return sliderGain;
 	}
 
 	JSpinner peakFallSpinner() {

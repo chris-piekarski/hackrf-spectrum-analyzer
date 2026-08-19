@@ -138,6 +138,8 @@ public class PersistentDisplay {
 		float maxAccumulatedValue = updatesPerSecond * persistenceTimeSecs;
 		for (int i = 0; i < spectrum.length; i++) {
 			float power = spectrum[i];
+			if (DatasetSpectrum.isChartHole(power))
+				continue;
 			float powerLin = 1; /*
 								 * each occurence of power value at given
 								 * frequency is simply +1

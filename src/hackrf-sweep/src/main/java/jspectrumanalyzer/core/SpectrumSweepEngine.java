@@ -171,7 +171,7 @@ public class SpectrumSweepEngine implements HackRFSweepDataCallback {
 		try {
 			if (forceStop)
 				return;
-			FrequencyRange range = settings.getFrequency().getValue();
+			FrequencyRange range = settings.getFrequency().getValue().forInterleavedNativeSweep();
 			HackRFSweepNativeBridge.configure(settings.getSelectedSerial().getValue(),
 					settings.getClkoutEnable().getValue());
 			HackRFSweepNativeBridge.start(this, range.getStartMHz(), range.getEndMHz(),

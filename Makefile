@@ -89,6 +89,9 @@ udev: ## Install persistent udev rules (sudo once). Keeps usbfs writable after u
 start: build ## Build if needed, then launch the Linux app.
 	./src/hackrf-sweep/build/hackrf-spectrum-analyzer/hackrf_sweep_spectrum_analyzer_linux.sh
 
+mcp: build ## Launch the app with a localhost MCP server (127.0.0.1:8765)
+	./src/hackrf-sweep/build/hackrf-spectrum-analyzer/hackrf_sweep_spectrum_analyzer_linux.sh --mcp
+
 run: start ## Alias for start.
 
-.PHONY: build clean test test-hw lint stats mermaid info list-devices firmware-update udev start run help deps runtime-deps
+.PHONY: build clean test test-hw lint stats mermaid info list-devices firmware-update udev start run mcp help deps runtime-deps

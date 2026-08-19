@@ -56,6 +56,29 @@ class DatasetSpectrumTest {
     }
 
     @Test
+    void fullResolutionChartSeriesKeepsThePeakAndBreaksHoles() {
+        DatasetSpectrum ds = new DatasetSpectrum(100000f, 88, 108, -150f);
+        for (int i = 0; i < ds.spectrumLength(); i++)
+            ds.getSpectrumArray()[i] = i % 3 == 0 ? -150f : -62f;
+        ds.getSpectrumArray()[10] = -35f;
+        jspectrumanalyzer.core.jfc.XYSeriesImmutable xy = ds.createSpectrumDataset("fm");
+        assertEquals(ds.spectrumLength(), xy.getItemCount());
+        assertTrue(Double.isNaN(xy.getYY(0)));
+        assertEquals(-35.0, xy.getYY(10), 0.001);
+    }
+
+    @Test
+    void chartSeriesDownsamplesToMaxPointsUsingPeak() {
+        DatasetSpectrum ds = new DatasetSpectrum(100000f, 2400, 2500, -150f);
+        ds.getSpectrumArray()[0] = -80f;
+        ds.getSpectrumArray()[1] = -30f;
+        ds.getSpectrumArray()[2] = -90f;
+        jspectrumanalyzer.core.jfc.XYSeriesImmutable xy = ds.createSpectrumDataset("wide", 50);
+        assertEquals(50, xy.getItemCount());
+        assertEquals(-30.0, xy.getYY(0), 0.001);
+    }
+
+    @Test
     void testCopyTo() {
         DatasetSpectrum src = new DatasetSpectrum(100000f, 2400, 2401, -100f);
         src.getSpectrumArray()[0] = -50f;
