@@ -12,7 +12,7 @@
 
 # Spectrum Analyzer GUI for hackrf_sweep for Windows/Linux
 
-![screenshot](screenshot.gif "screenshot")
+![screenshot](screenshot.png "screenshot")
 
 This is a fork of [pavsa/hackrf-spectrum-analyzer](https://github.com/pavsa/hackrf-spectrum-analyzer) with additional **Quick Select frequency band buttons** for common ranges (WiFi, LTE, FM, HF/VHF/UHF, TV, etc).
 
