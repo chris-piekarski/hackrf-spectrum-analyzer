@@ -41,8 +41,10 @@ These are the best candidates for unit testing (and have the majority of our tes
 
 ### Native Integration
 - `src-c/0001-hackrf_sweep-to-library-conversion-v2026.01.3.patch` — Turns the upstream `hackrf_sweep` tool into a reusable library.
-- `HackRFSweepNativeBridge.java` + hand-maintained `HackrfSweepLibrary.java` (`make jnabridge` does not regenerate it)
+- `src-c/hackrf_fm.c` — parked IQ RX (`hackrf_start_rx`) for listen mode. First-party; not a second sweep patch.
+- `HackRFSweepNativeBridge.java` / `HackRFFmNativeBridge.java` + hand-maintained `HackrfSweepLibrary.java` (`make jnabridge` does not regenerate it)
 - The build process resets the hackrf submodule to `HACKRF_SDK_PIN` (v2026.01.3) and applies the patch.
+- Sweep and listen are exclusive. `WfmDemodulator` (Java) turns int8 IQ into 48 kHz mono PCM.
 
 ### UI Layer
 - Swing + FlatLaf + JFreeChart.

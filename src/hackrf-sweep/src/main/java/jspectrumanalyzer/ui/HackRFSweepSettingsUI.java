@@ -68,6 +68,9 @@ public class HackRFSweepSettingsUI extends JPanel
 	private JButton btnPause;
 	private JButton btnRestart;
 	private JButton btnStop;
+	private JButton btnListen;
+	private JSpinner spinnerListen;
+	private JSlider sliderVolume;
 	private JComboBox<String> comboRadio;
 	private JCheckBox checkBoxClkout;
 	static final String FIRST_RADIO = "First radio";
@@ -145,22 +148,37 @@ public class HackRFSweepSettingsUI extends JPanel
 		btnStop.setToolTipText("Halt the native sweep and release USB so other tools can open the radio.");
 		btnPause = new JButton("Pause");
 		btnPause.setToolTipText("Freeze the display. The radio keeps sweeping; click Resume to show live data again.");
+		btnListen = new JButton("Listen");
+		btnListen.setToolTipText("Park the radio on a US FM station and play audio. Stops the sweep. Click a 97.3 tag to tune.");
+		spinnerListen = new JSpinner(new SpinnerNumberModel(97.3, 88.1, 107.9, 0.2));
+		spinnerListen.setToolTipText("US FM dial (88.1–107.9, 200 kHz).");
+		sliderVolume = new JSlider(0, 100, 80);
+		sliderVolume.setToolTipText("Listen volume.");
 		ExclusiveToolTip.install(txtHackrfConnected);
 		ExclusiveToolTip.install(comboRadio);
 		ExclusiveToolTip.install(checkBoxClkout);
 		ExclusiveToolTip.install(btnRestart);
 		ExclusiveToolTip.install(btnStop);
 		ExclusiveToolTip.install(btnPause);
+		ExclusiveToolTip.install(btnListen);
+		ExclusiveToolTip.install(spinnerListen);
+		ExclusiveToolTip.install(sliderVolume);
 
 		JPanel radioButtons = new JPanel(new GridLayout(1, 2, 4, 0));
 		radioButtons.add(btnRestart);
 		radioButtons.add(btnStop);
+
+		JPanel listenRow = new JPanel(new BorderLayout(4, 0));
+		listenRow.add(btnListen, BorderLayout.CENTER);
+		listenRow.add(spinnerListen, BorderLayout.EAST);
 
 		JPanel radioStrip = new JPanel(new GridLayout(0, 1, 0, 4));
 		radioStrip.add(txtHackrfConnected);
 		radioStrip.add(comboRadio);
 		radioStrip.add(checkBoxClkout);
 		radioStrip.add(radioButtons);
+		radioStrip.add(listenRow);
+		radioStrip.add(sliderVolume);
 		radioStrip.add(btnPause);
 		panelMainSettings.add(radioStrip, "cell 0 24,growx");
 
@@ -415,6 +433,27 @@ public class HackRFSweepSettingsUI extends JPanel
 			hRF.releaseRadio();
 			refreshRadioCombo();
 		});
+		btnListen.addActionListener(e -> {
+			if (Boolean.TRUE.equals(hRF.isListening().getValue()))
+				hRF.stopListen();
+			else
+				hRF.startListen();
+		});
+		new MVCController(spinnerListen, hRF.getListenKHz(),
+				view -> jspectrumanalyzer.core.FmChannelPlan.clamp(((Number) view).doubleValue()).centerKHz,
+				model -> model / 1000.0);
+		new MVCController(sliderVolume, hRF.getListenVolume());
+		Runnable syncListen = () -> {
+			boolean listen = Boolean.TRUE.equals(hRF.isListening().getValue());
+			boolean released = Boolean.TRUE.equals(hRF.isRadioReleased().getValue());
+			jspectrumanalyzer.core.FmChannel ch = jspectrumanalyzer.core.FmChannelPlan
+					.clamp(hRF.getListenKHz().getValue() / 1000.0);
+			btnListen.setText(listen ? "Listening " + ch.label() : "Listen");
+			btnPause.setEnabled(!listen && !released);
+		};
+		hRF.isListening().addListener(() -> SwingUtilities.invokeLater(syncListen));
+		hRF.getListenKHz().addListener(() -> SwingUtilities.invokeLater(syncListen));
+		syncListen.run();
 		new MVCController(checkBoxClkout, hRF.getClkoutEnable());
 		refreshRadioCombo();
 		comboRadio.addActionListener(e -> {
@@ -427,7 +466,8 @@ public class HackRFSweepSettingsUI extends JPanel
 		});
 		hRF.isRadioReleased().addListener(released -> SwingUtilities.invokeLater(() -> {
 			btnStop.setEnabled(!released);
-			btnPause.setEnabled(!released);
+			boolean listen = Boolean.TRUE.equals(hRF.isListening().getValue());
+			btnPause.setEnabled(!released && !listen);
 			btnStop.setText(released ? "Stopped" : "Stop");
 		}));
 		hRF.isRadioReleased().callObservers();
@@ -520,6 +560,14 @@ public class HackRFSweepSettingsUI extends JPanel
 
 	JButton pauseButton() {
 		return btnPause;
+	}
+
+	JButton listenButton() {
+		return btnListen;
+	}
+
+	JSpinner listenSpinner() {
+		return spinnerListen;
 	}
 
 	JButton restartButton() {

@@ -102,6 +102,8 @@ make test-hw
 
 They skip if no HackRF is enumerated. The sweep IT also needs `libhackrf-sweep.so` from `make build` and a writable usbfs node.
 
+**Listen audio** uses Java Sound (48 kHz mono). On native Linux that is PulseAudio/PipeWire. On WSL2, speakers are silent until Pulse is forwarded to Windows (or you run the JAR on Windows). Demod still runs; only the mixer is missing.
+
 ## Windows
 
 - Windows 11 usually works with the default driver.

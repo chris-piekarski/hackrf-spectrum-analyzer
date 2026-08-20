@@ -39,6 +39,14 @@ class FmChannelPlanTest {
 	}
 
 	@Test
+	void clampPinsListenDialToTheUsRaster() {
+		assertEquals(88100, FmChannelPlan.clamp(80).centerKHz);
+		assertEquals(107900, FmChannelPlan.clamp(120).centerKHz);
+		assertEquals(97300, FmChannelPlan.clamp(97.3).centerKHz);
+		assertEquals(97300, FmChannelPlan.clamp(97.35).centerKHz);
+	}
+
+	@Test
 	void nearestSnapsInsideAChannelAndRejectsOutsideTheBand() {
 		assertEquals(97300, FmChannelPlan.nearest(97.29).centerKHz);
 		assertEquals(97300, FmChannelPlan.nearest(97.31).centerKHz);

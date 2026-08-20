@@ -10,6 +10,7 @@ import jspectrumanalyzer.core.FmBandLayer;
 import jspectrumanalyzer.core.FmStationHit;
 import jspectrumanalyzer.core.HackRFSettings;
 import jspectrumanalyzer.core.RadioIdentity;
+import jspectrumanalyzer.core.RadioMode;
 import jspectrumanalyzer.core.SweepConfig;
 import jspectrumanalyzer.mcp.SpectrumSnapshot.FmHit;
 import jspectrumanalyzer.mcp.SpectrumSnapshot.RadioContext;
@@ -97,10 +98,13 @@ public final class SpectrumSnapshotStore
 				&& Boolean.TRUE.equals(settings.isChartsPeaksVisible().getValue());
 		boolean auto = settings.isPowerAutoScale() != null && Boolean.TRUE.equals(settings.isPowerAutoScale().getValue());
 		boolean autoGain = settings.isAutoGain() != null && Boolean.TRUE.equals(settings.isAutoGain().getValue());
+		boolean listening = settings.isListening() != null && Boolean.TRUE.equals(settings.isListening().getValue());
+		int listenKHz = settings.getListenKHz() != null ? settings.getListenKHz().getValue() : 0;
+		String mode = RadioMode.from(released, listening).jsonName();
 		RadioContext next = new RadioContext(paused, released, sweepsPerSec, id.displayBoard(), id.shortSerial(),
 				id.displayFirmware(), id.usbApi, id.present, radio.startMHz, radio.endMHz, radio.fftBinHz, radio.samples,
 				radio.lnaGain, radio.vgaGain, radio.antennaPower, radio.antennaLna, radio.clkout, radio.serial, peaks,
-				auto, autoGain, fm);
+				auto, autoGain, fm, mode, listenKHz);
 		synchronized (lock)
 		{
 			context = next;

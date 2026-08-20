@@ -75,7 +75,23 @@ class SpectrumMcpToolsTest {
 		assertTrue(cfg.contains("autoScale"));
 		assertTrue(cfg.contains("fftBinHz"));
 		assertTrue(cfg.contains("100000"));
+		assertTrue(cfg.contains("radioMode"));
+		assertTrue(cfg.contains("sweep"));
 		assertFalse(cfg.contains("persistent"));
+	}
+
+	@Test
+	void sweepConfigReportsListenMode() {
+		SpectrumSnapshotStore store = new SpectrumSnapshotStore();
+		AnalyzerSettings settings = new AnalyzerSettings();
+		settings.startListen();
+		store.publishContext(settings, java.util.List.of(), 0);
+		SpectrumMcpTools tools = new SpectrumMcpTools(store);
+		String cfg = tools.call("sweep_config", Map.of());
+		assertTrue(cfg.contains("radioMode"));
+		assertTrue(cfg.contains("listen"));
+		assertTrue(cfg.contains("listenMHz"));
+		assertTrue(cfg.contains("97.3"));
 	}
 
 	@Test

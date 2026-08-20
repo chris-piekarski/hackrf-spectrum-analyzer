@@ -86,7 +86,7 @@ class SpectrumSnapshotStoreTest {
 		assertTrue(store.context().sweepConfigJson().contains("\"autoScale\":true"));
 		assertTrue(store.context().sweepConfigJson().contains("\"autoGain\":true"));
 		assertTrue(store.context().sweepConfigJson().contains("\"radio\""));
-		assertFalse(store.context().sweepConfigJson().contains("97.3"));
+		assertTrue(store.context().sweepConfigJson().contains("radioMode"));
 		assertEquals("[]", store.context().fmStationsJson());
 		assertEquals("HackRF One", store.context().board);
 		assertEquals("eeff0011", store.context().serial);

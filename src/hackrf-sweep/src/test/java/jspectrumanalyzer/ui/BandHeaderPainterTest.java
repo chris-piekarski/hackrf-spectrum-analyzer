@@ -12,6 +12,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import jspectrumanalyzer.core.BandMark;
+import jspectrumanalyzer.core.FmChannel;
+import jspectrumanalyzer.core.FmChannelPlan;
 import jspectrumanalyzer.core.FrequencyAxis;
 import jspectrumanalyzer.core.WifiBandLayer;
 
@@ -45,6 +47,19 @@ class BandHeaderPainterTest {
 		for (int x = 40; x < 760 && !painted; x++)
 			painted = ((img.getRGB(x, 30) >>> 24) & 0xFF) > 0;
 		assertTrue(painted);
+	}
+
+	@Test
+	void hitTestFindsPrimaryHeaderMarkAndIgnoresPlotBody() {
+		Rectangle2D area = new Rectangle2D.Double(40, 20, 720, 250);
+		FrequencyAxis axis = FrequencyAxis.fromArea(area, 88, 108);
+		FmChannel ch = FmChannelPlan.nearest(97.3);
+		BandMark mark = new BandMark(ch.lowMHz(), ch.highMHz(), ch.centerMHz(), ch.label(), BandMark.Style.PRIMARY,
+				false, false, true, BandMark.LabelFit.DROP_IF_OVERLAP, 1f);
+		int x = axis.mhzToXInt(97.3);
+		assertEquals(ch.label(), BandHeaderPainter.hitTest(x, area.getMinY() + 4, area, axis, List.of(mark)).label);
+		assertNull(BandHeaderPainter.hitTest(x, area.getMinY() + BandHeaderPainter.HEADER_H + 20, area, axis,
+				List.of(mark)));
 	}
 
 	@Test

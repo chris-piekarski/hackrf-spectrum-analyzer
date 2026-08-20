@@ -61,6 +61,11 @@ class AnalyzerSettingsTest {
 			}
 
 			@Override
+			public void startListen()
+			{
+			}
+
+			@Override
 			public List<String> listRadioSerials()
 			{
 				return serials;
@@ -73,6 +78,57 @@ class AnalyzerSettingsTest {
 		assertFalse(s.isRadioReleased().getValue());
 		assertEquals(1, restarts.get());
 		assertEquals(List.of("aabbccdd"), s.listRadioSerials());
+	}
+
+	@Test
+	void listenModeIsExclusiveWithSweepAndDoesNotReleaseUsb() {
+		AnalyzerSettings s = new AnalyzerSettings();
+		AtomicInteger restarts = new AtomicInteger();
+		AtomicInteger listens = new AtomicInteger();
+		s.setHardware(new AnalyzerSettings.Hardware()
+		{
+			@Override
+			public void restartSweep()
+			{
+				restarts.incrementAndGet();
+			}
+
+			@Override
+			public void releaseRadio()
+			{
+			}
+
+			@Override
+			public void startListen()
+			{
+				listens.incrementAndGet();
+			}
+
+			@Override
+			public List<String> listRadioSerials()
+			{
+				return List.of();
+			}
+		});
+		assertEquals(RadioMode.SWEEP, s.radioMode());
+		assertEquals(97300, s.getListenKHz().getValue());
+		s.startListen();
+		assertEquals(RadioMode.LISTEN, s.radioMode());
+		assertTrue(s.isListening().getValue());
+		assertFalse(s.isRadioReleased().getValue());
+		assertEquals(1, listens.get());
+		s.stopListen();
+		assertEquals(RadioMode.SWEEP, s.radioMode());
+		assertFalse(s.isListening().getValue());
+		assertEquals(1, restarts.get());
+		s.startListen();
+		s.releaseRadio();
+		assertEquals(RadioMode.STOPPED, s.radioMode());
+		assertFalse(s.isListening().getValue());
+		s.restartSweep();
+		assertEquals(RadioMode.SWEEP, s.radioMode());
+		assertFalse(s.isRadioSetting(s.isListening()));
+		assertFalse(s.isRadioSetting(s.getListenVolume()));
 	}
 
 	@Test

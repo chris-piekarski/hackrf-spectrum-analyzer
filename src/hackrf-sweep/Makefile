@@ -40,7 +40,8 @@ RELEASE_DIR= ../../release/
 
 SOURCES= \
 lib/hackrf/host/libhackrf/src/hackrf.c \
-lib/hackrf/host/hackrf-tools/src/hackrf_sweep.c
+lib/hackrf/host/hackrf-tools/src/hackrf_sweep.c \
+src-c/hackrf_fm.c
 
 INCLUDE_PATHS= -Ilib/hackrf/host/libhackrf/src -I$(LIBUSB_DIR)/include/libusb-1.0 -Ilib/fftw-3.3.5-dll64
 LIBUSB_DIR= lib/libusb-1.0.21

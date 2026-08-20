@@ -90,6 +90,25 @@ public final class FmChannelPlan
 		return ch;
 	}
 
+	/** Nearest in-band dial, clamping to 88.1 or 107.9. */
+	public static FmChannel clamp(double mhz)
+	{
+		FmChannel exact = nearest(mhz);
+		if (exact != null)
+			return exact;
+		int kHz = (int) Math.round(mhz * 1000.0);
+		if (kHz <= FIRST_CENTER_KHZ)
+			return CHANNELS.get(0);
+		if (kHz >= LAST_CENTER_KHZ)
+			return CHANNELS.get(CHANNELS.size() - 1);
+		int idx = (int) Math.round((kHz - FIRST_CENTER_KHZ) / (double) STEP_KHZ);
+		if (idx < 0)
+			idx = 0;
+		if (idx >= CHANNELS.size())
+			idx = CHANNELS.size() - 1;
+		return CHANNELS.get(idx);
+	}
+
 	/**
 	 * Live stations in {@code ds}: local maxima at least
 	 * {@link #DETECT_MARGIN_DB} above the noise floor, snapped to the

@@ -1,15 +1,20 @@
 package hackrfsweep;
 import com.sun.jna.Callback;
 import com.sun.jna.Library;
+import com.sun.jna.Pointer;
 import com.sun.jna.ptr.DoubleByReference;
 import com.sun.jna.ptr.FloatByReference;
 /**
  * JNA bindings for {@code libhackrf-sweep}. Hand-maintained — do not regenerate
- * with JNAerator. Keep in sync with {@code src-c/hackrf_sweep.h}.
+ * with JNAerator. Keep in sync with {@code src-c/hackrf_sweep.h} and
+ * {@code src-c/hackrf_fm.h}.
  */
 public class HackrfSweepLibrary implements Library {
 	public interface hackrf_sweep_lib_start__fft_power_callback_callback extends Callback {
 		void apply(byte full_sweep_done, int bins, DoubleByReference freqStart, float fft_bin_Hz, FloatByReference powerdBm);
+	};
+	public interface hackrf_fm_lib_start__iq_callback_callback extends Callback {
+		void apply(Pointer iq, int nbytes);
 	};
 	/**
 	 * only ONE instance running is supported at any time<br>
@@ -20,4 +25,11 @@ public class HackrfSweepLibrary implements Library {
 	public static native void hackrf_sweep_lib_stop();
 	/** Call before start. {@code serial_number} null/empty = first device. */
 	public static native void hackrf_sweep_lib_config(String serial_number, int clkout_enable);
+
+	public static native int hackrf_fm_lib_start(HackrfSweepLibrary.hackrf_fm_lib_start__iq_callback_callback iq_callback,
+			long freq_hz, int sample_rate, int lna_gain, int vga_gain, int antenna_power, int antenna_lna);
+
+	public static native void hackrf_fm_lib_stop();
+
+	public static native void hackrf_fm_lib_config(String serial_number, int clkout_enable);
 }

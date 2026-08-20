@@ -215,4 +215,16 @@ class HackRFSweepHardwareIT {
 		assertTrue(Math.abs(fm.fftBinWidthHz - fineBinHz) < Math.abs(fm.fftBinWidthHz - FFT_BIN_HZ),
 				"second sweep FFT bin should be nearer 100 kHz than 1 MHz, got " + fm.fftBinWidthHz);
 	}
+
+	@HardwareTest
+	@Timeout(value = 40, unit = TimeUnit.SECONDS)
+	void listenModeProducesIqThenSweepResumes() throws Exception {
+		HardwareSweepSession.assumeSweepReady();
+		long loHz = 97_300_000L - jspectrumanalyzer.core.WfmDemodulator.OFFSET_HZ;
+		int iq = HardwareFmSession.runUntilIq(loHz, 24, 20, 12);
+		assertTrue(iq >= 1, "expected at least one IQ callback while listening");
+		HardwareSweepSession.Result after = HardwareSweepSession.run(FREQ_START_MHZ, FREQ_END_MHZ, FFT_BIN_HZ, false,
+				false);
+		after.assertHealthy("sweep after FM listen stop");
+	}
 }

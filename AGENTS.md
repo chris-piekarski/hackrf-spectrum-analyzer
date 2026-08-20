@@ -111,7 +111,8 @@ The only project overview file is root `README.md`. Do **not** recreate `Readme.
 - Operator settings live in `AnalyzerSettings` (implements `HackRFSettings`). Do not add new `ModelValue` fields on the analyzer JFrame. Mark radio vs display via `isRadioSetting`. Auto gain is display policy; the LNA/VGA values it writes are radio settings.
 - Plot overlays go through `FrequencyAxis` + `BandMark` + `BandHeaderPainter`. Do not invent a second MHz↔pixel map.
 - Native interleaved hops export 5 MHz slices with holes. Pad USB start/stop with `FrequencyRange.forInterleavedNativeSweep()` (±10 MHz) so the requested window (e.g. FM 88–108) is actually filled. Dataset/axis stay on the operator range.
-- Live agent access is `jspectrumanalyzer.mcp` (`SpectrumSnapshotStore` from `onFullSweepProcessed`, `SpectrumMcpServer` JSON-RPC). Tools are read-only (`spectrum_summary`, `spectrum_snapshot`, `radio_identity`, `sweep_config`, `fm_stations`, `spectrum_occupancy`, `spectrum_history`); occupancy is `SpectrumOccupancy` on filled bins, not a new USB path. Do not restart USB from a snapshot tool. Start with `--mcp` / `make mcp` (localhost 8765). Stdio shim: `scripts/mcp-spectrum-proxy.py`.
+- Live agent access is `jspectrumanalyzer.mcp` (`SpectrumSnapshotStore` from `onFullSweepProcessed`, `SpectrumMcpServer` JSON-RPC). Tools are read-only (`spectrum_summary`, `spectrum_snapshot`, `radio_identity`, `sweep_config`, `fm_stations`, `spectrum_occupancy`, `spectrum_history`); occupancy is `SpectrumOccupancy` on filled bins, not a new USB path. Do not restart USB from a snapshot tool. `sweep_config` reports `radioMode` (`sweep`/`listen`/`stopped`). Start with `--mcp` / `make mcp` (localhost 8765). Stdio shim: `scripts/mcp-spectrum-proxy.py`.
+- FM listen (`WfmDemodulator`, `src-c/hackrf_fm.c`) is exclusive with the sweep: one HackRF, parked IQ RX, Java mono WFM. Do not time-slice. Demod belongs in `core/` with synthetic IQ tests. `AudioSink` fakes the mixer in unit tests.
 - Auto-gain (`AutoGainPolicy`) must not pump: one Wi-Fi packet is not clip; a disappeared burst is not compression; settle after each apply; do not `clearHistory()` on a gain-only restart (`DatasetSpectrum.sameAxisAs`).
 - UI changes should be accompanied by updates to `docs/usage.md`.
 - New Makefile targets must be added to both the root `Makefile` and the detailed `src/hackrf-sweep/Makefile`, with proper `##` descriptions for `make help`.
@@ -145,6 +146,7 @@ GitHub's "ahead/behind" count vs `pavsa/hackrf-spectrum-analyzer` is misleading:
 - `HackrfSweepLibrary` is hand-maintained (`make jnabridge` does not run JNAerator). The UI requires a **headful** JDK 21+.
 - Long runs on WSL/X11 can SIGSEGV in `libawt` while JFreeChart paints the spectrum line (`ChartPanel` / `FillAAPgram`). That is native AWT, not the sweep engine.
 - AGC still restarts USB when it actually changes LNA/VGA; only the waterfall mapping (same MHz/FFT) is preserved across that restart.
+- Listen stops the sweep. WSL audio needs Pulse/PipeWire forwarded to Windows or Java Sound is silent.
 
 ## Questions?
 

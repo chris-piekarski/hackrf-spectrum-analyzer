@@ -76,6 +76,19 @@ public interface HackRFSettings {
 
 	public void releaseRadio();
 
+	/** Parked WFM receiver. Stops the sweep; USB stays owned. */
+	public void startListen();
+
+	/** Leave listen mode and resume the sweep unless Stop was pressed. */
+	public void stopListen();
+
+	public ModelValueBoolean isListening();
+
+	/** US FM dial in kHz (88100–107900, step 200). */
+	public ModelValueInt getListenKHz();
+
+	public ModelValueInt getListenVolume();
+
 	/** USB serials currently visible to libhackrf (may be empty). */
 	public java.util.List<String> listRadioSerials();
 

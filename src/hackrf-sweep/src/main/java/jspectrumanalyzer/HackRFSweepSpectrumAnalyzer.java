@@ -77,17 +77,27 @@ import org.jfree.chart.ui.TextAnchor;
 
 import jspectrumanalyzer.capture.ScreenCapture;
 import jspectrumanalyzer.core.AnalyzerSettings;
+import jspectrumanalyzer.core.BandMark;
 import jspectrumanalyzer.core.DatasetSpectrumPeak;
+import jspectrumanalyzer.core.FmBandLayer;
+import jspectrumanalyzer.core.FmChannel;
+import jspectrumanalyzer.core.FmChannelPlan;
+import jspectrumanalyzer.core.FmListenEngine;
 import jspectrumanalyzer.core.FmStationHit;
 import jspectrumanalyzer.core.FmStationTracker;
+import jspectrumanalyzer.core.FrequencyAxis;
 import jspectrumanalyzer.core.FrequencyAllocationTable;
 import jspectrumanalyzer.core.FrequencyAllocations;
 import jspectrumanalyzer.core.FrequencyBand;
 import jspectrumanalyzer.core.FrequencyRange;
 import jspectrumanalyzer.core.AutoGainPolicy;
 import jspectrumanalyzer.core.GainPolicy;
+import jspectrumanalyzer.core.AudioSink;
+import jspectrumanalyzer.core.AudioSinks;
 import jspectrumanalyzer.core.HackRFSettings;
 import jspectrumanalyzer.core.PersistentDisplay;
+import jspectrumanalyzer.core.RecordingAudioSink;
+import jspectrumanalyzer.core.WfmDemodulator;
 import jspectrumanalyzer.core.RadioIdentity;
 import jspectrumanalyzer.core.RuntimePerformanceWatch;
 import jspectrumanalyzer.core.SpectrumPowerScale;
@@ -98,9 +108,12 @@ import jspectrumanalyzer.core.SpectrumZoomHistory;
 import jspectrumanalyzer.core.SpurFilter;
 import jspectrumanalyzer.core.jfc.XYSeriesCollectionImmutable;
 import jspectrumanalyzer.nativebridge.HackRFDeviceQuery;
+import jspectrumanalyzer.nativebridge.HackRFFmNativeBridge;
 import jspectrumanalyzer.nativebridge.HackRFSweepDataCallback;
 import jspectrumanalyzer.nativebridge.HackRFSweepNativeBridge;
+import jspectrumanalyzer.ui.BandHeaderPainter;
 import jspectrumanalyzer.ui.HackRFSweepSettingsUI;
+import jspectrumanalyzer.ui.ListenHud;
 import jspectrumanalyzer.ui.SweepStatusBar;
 import jspectrumanalyzer.ui.WaterfallPlot;
 import jspectrumanalyzer.ui.FmChannelOverlay;
@@ -211,6 +224,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private WaterfallPlot							waterfallPlot;
 	private JLabel labelMessages;
 	private SweepStatusBar sweepStatusBar;
+	private final FmListenEngine fmEngine = new FmListenEngine();
+	private volatile boolean fmAudioOk;
 
 	public HackRFSweepSpectrumAnalyzer() {
 		jspectrumanalyzer.ui.AnalyzerLookAndFeel.install();
@@ -229,6 +244,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				if (sweepEngine != null)
 					sweepEngine.requestStop();
 				HackRFSweepNativeBridge.stop();
+				HackRFFmNativeBridge.stop();
+				fmEngine.stop();
 				if (threadHackrfSweep != null) {
 					try {
 						threadHackrfSweep.join(2000);
@@ -237,6 +254,12 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 					}
 				}
 				refreshRadioIdentity();
+			}
+
+			@Override
+			public void startListen() {
+				radioApplyTimer.stop();
+				restartHackrfSweep();
 			}
 
 			@Override
@@ -484,6 +507,31 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	@Override
 	public void restartSweep() {
 		settings.restartSweep();
+	}
+
+	@Override
+	public void startListen() {
+		settings.startListen();
+	}
+
+	@Override
+	public void stopListen() {
+		settings.stopListen();
+	}
+
+	@Override
+	public ModelValueBoolean isListening() {
+		return settings.isListening();
+	}
+
+	@Override
+	public ModelValueInt getListenKHz() {
+		return settings.getListenKHz();
+	}
+
+	@Override
+	public ModelValueInt getListenVolume() {
+		return settings.getListenVolume();
 	}
 
 	@Override
@@ -828,7 +876,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	}
 
 	private void maybeSeedAutoGain(FrequencyRange range) {
-		if (range == null || !settings.isAutoGain().getValue())
+		if (range == null || !settings.isAutoGain().getValue() || settings.isListening().getValue())
 			return;
 		Integer seed = autoGainLoop.seedIfBandShifted(range.getStartMHz(), range.getEndMHz(),
 				settings.getGain().getValue());
@@ -842,7 +890,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		if (ds == null || range == null)
 			return;
 		if (!settings.isAutoGain().getValue() || settings.isCapturingPaused().getValue()
-				|| settings.isRadioReleased().getValue())
+				|| settings.isRadioReleased().getValue() || settings.isListening().getValue())
 			return;
 		AutoGainPolicy.Observation obs = AutoGainPolicy.observe(ds, settings.getGain().getValue(),
 				range.getStartMHz(), range.getEndMHz());
@@ -890,13 +938,17 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		if (!SweepConfig.shouldStartAfterStop(settings.isRadioReleased().getValue(),
 				threadLaunchCommands.peek() != null))
 			return;
+		final boolean listen = settings.isListening().getValue();
 		threadHackrfSweep = new Thread(() -> {
-			Thread.currentThread().setName("hackrf_sweep");
+			Thread.currentThread().setName(listen ? "hackrf_fm" : "hackrf_sweep");
 			try {
 				forceStopSweep = false;
 				if (sweepEngine != null)
 					sweepEngine.clearStop();
-				sweep();
+				if (listen)
+					runFmListen();
+				else
+					sweep();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -1051,6 +1103,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 						range.getStartMHz(), range.getEndMHz());
 				FmChannelOverlay.paint(g2, area, xy.getDomainAxis(), xy.getDomainAxisEdge(),
 						range.getStartMHz(), range.getEndMHz(), fmStations);
+				if (settings.isListening().getValue())
+					ListenHud.paint(g2, area, settings.getListenKHz().getValue() / 1000.0, fmAudioOk);
 				spectrumZoomOverlay.paint(g2, area);
 			}
 
@@ -1169,7 +1223,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		chartPanel.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mousePressed(MouseEvent e) {
-				if (!SwingUtilities.isLeftMouseButton(e) || !inPlot(e))
+				if (!SwingUtilities.isLeftMouseButton(e) || !inPlot(e) || inHeader(e))
 					return;
 				spectrumZoomAnchorX = e.getX();
 				spectrumZoomDragging = true;
@@ -1193,7 +1247,11 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				if (e.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(e) && inPlot(e))
+				if (inHeader(e) && SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 1) {
+					tryListenFromHeader(e);
+					return;
+				}
+				if (e.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(e) && inPlot(e) && !inHeader(e))
 					zoomOut();
 			}
 		});
@@ -1226,6 +1284,29 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private boolean inPlot(MouseEvent e) {
 		Rectangle2D area = plotArea();
 		return area != null && area.contains(e.getX(), e.getY());
+	}
+
+	private boolean inHeader(MouseEvent e) {
+		Rectangle2D area = plotArea();
+		return area != null && e.getX() >= area.getMinX() && e.getX() <= area.getMaxX()
+				&& e.getY() >= area.getMinY() && e.getY() <= area.getMinY() + BandHeaderPainter.HEADER_H;
+	}
+
+	private void tryListenFromHeader(MouseEvent e) {
+		Rectangle2D area = plotArea();
+		if (area == null)
+			return;
+		FrequencyRange range = getFreq();
+		FrequencyAxis axis = FrequencyAxis.fromArea(area, range.getStartMHz(), range.getEndMHz());
+		java.util.List<BandMark> marks = FmBandLayer.marks(axis, fmStations);
+		BandMark hit = BandHeaderPainter.hitTest(e.getX(), e.getY(), area, axis, marks);
+		if (hit == null)
+			return;
+		FmChannel ch = FmChannelPlan.nearest(hit.labelMHz);
+		if (ch == null)
+			return;
+		settings.getListenKHz().setValue(ch.centerKHz);
+		settings.startListen();
 	}
 
 	private Rectangle2D plotArea() {
@@ -1291,7 +1372,11 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 	private void setupParameterObservers() {
 		Runnable restartHackrf = this::restartHackrfSweep;
-		settings.getFrequency().addListener(this::scheduleFrequencyRadioApply);
+		settings.getFrequency().addListener(() -> {
+			if (settings.isListening().getValue())
+				return;
+			scheduleFrequencyRadioApply();
+		});
 		settings.getFrequency().addListener((range) -> {
 			if (chart != null)
 				chart.getXYPlot().getDomainAxis().setRange(range.getStartMHz(), range.getEndMHz());
@@ -1301,10 +1386,27 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		});
 		settings.getAntennaPowerEnable().addListener(restartHackrf);
 		settings.getAntennaLNA().addListener(restartHackrf);
-		settings.getFFTBinHz().addListener(restartHackrf);
-		settings.getSamples().addListener(restartHackrf);
+		settings.getFFTBinHz().addListener(() -> {
+			if (!settings.isListening().getValue())
+				restartHackrfSweep();
+		});
+		settings.getSamples().addListener(() -> {
+			if (!settings.isListening().getValue())
+				restartHackrfSweep();
+		});
 		settings.getSelectedSerial().addListener(restartHackrf);
 		settings.getClkoutEnable().addListener(restartHackrf);
+		settings.getListenKHz().addListener(() -> {
+			if (settings.isListening().getValue())
+				restartHackrfSweep();
+			snapshotStore.publishContext(settings, fmStations, 0);
+		});
+		settings.getListenVolume().addListener(v -> fmEngine.setVolume(v));
+		settings.isListening().addListener(() -> {
+			snapshotStore.publishContext(settings, fmStations, 0);
+			if (chartPanel != null)
+				SwingUtilities.invokeLater(chartPanel::repaint);
+		});
 		settings.isCapturingPaused().addListener(this::fireCapturingStateChanged);
 
 		settings.getGain().addListener((gainTotal) -> {
@@ -1454,6 +1556,29 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		threadLauncher.start();
 	}
 
+	private void runFmListen() {
+		FmChannel ch = FmChannelPlan.clamp(settings.getListenKHz().getValue() / 1000.0);
+		long loHz = (long) ch.centerKHz * 1000L - WfmDemodulator.OFFSET_HZ;
+		if (loHz < 1_000_000L)
+			loHz = 1_000_000L;
+		fmEngine.setVolume(settings.getListenVolume().getValue());
+		AudioSink sink = AudioSinks.openPlayback();
+		fmAudioOk = !(sink instanceof RecordingAudioSink);
+		fmEngine.start(sink);
+		snapshotStore.publishContext(settings, fmStations, 0);
+		if (chartPanel != null)
+			SwingUtilities.invokeLater(chartPanel::repaint);
+		try {
+			HackRFFmNativeBridge.configure(settings.getSelectedSerial().getValue(),
+					settings.getClkoutEnable().getValue());
+			HackRFFmNativeBridge.start(iq -> fmEngine.offerIq(iq), loHz, WfmDemodulator.IQ_RATE_HZ,
+					settings.getGainLNA().getValue(), settings.getGainVGA().getValue(),
+					settings.getAntennaPowerEnable().getValue(), settings.getAntennaLNA().getValue());
+		} finally {
+			fmEngine.stop();
+		}
+	}
+
 	/**
 	 * no need to synchronize, executes only in launcher thread
 	 */
@@ -1461,11 +1586,13 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		forceStopSweep = true;
 		if (sweepEngine != null)
 			sweepEngine.requestStop();
+		HackRFFmNativeBridge.stop();
+		fmEngine.stop();
 		if (threadHackrfSweep != null) {
 			while (threadHackrfSweep.isAlive()) {
 				forceStopSweep = true;
-				//				System.out.println("Calling HackRFSweepNativeBridge.stop()");
 				HackRFSweepNativeBridge.stop();
+				HackRFFmNativeBridge.stop();
 				try {
 					Thread.sleep(20);
 				} catch (InterruptedException e) {

@@ -21,12 +21,12 @@ Start it with `make mcp`. Point the agent at `scripts/mcp-spectrum-proxy.py`. As
 | Where is the peak, and how loud is the noise? | `spectrum_summary` |
 | Give me the filled bins (optional `maxPoints`, `minDbm`) | `spectrum_snapshot` |
 | What radio is attached (board, serial, firmware, USB API)? | `radio_identity` |
-| What is the radio vs display config (range, FFT, LNA/VGA, auto-gain)? | `sweep_config` |
+| What is the radio vs display config (range, FFT, LNA/VGA, auto-gain, `radioMode`)? | `sweep_config` |
 | Which US FM dial hits are live right now? | `fm_stations` |
 | What is occupying the window (width, fraction, Wi-Fi ch)? | `spectrum_occupancy` |
 | How did peak/noise/occupancy move over the last few seconds? | `spectrum_history` |
 
-Hop holes are **omitted**, not reported as −150 dBm. Snapshots are sampled at most **10 Hz**. `spectrum_history` returns **summaries** from the ring (~20 s), not full bin arrays, and starts a new series when the MHz/FFT window changes. Occupancy is deterministic (noise+8 dB, merge adjacent bins); Wi-Fi views may label `ch 6`. v1 is **read-only**: the agent cannot retune or change gain.
+Hop holes are **omitted**, not reported as −150 dBm. Snapshots are sampled at most **10 Hz**. `spectrum_history` returns **summaries** from the ring (~20 s), not full bin arrays, and starts a new series when the MHz/FFT window changes. Occupancy is deterministic (noise+8 dB, merge adjacent bins); Wi-Fi views may label `ch 6`. v1 is **read-only**: the agent cannot retune, listen, or change gain. `sweep_config` includes `radioMode` (`sweep` / `listen` / `stopped`) and `listenMHz`. While the operator is listening, snapshots and `fm_stations` are stale (no full sweeps).
 
 ## Start
 

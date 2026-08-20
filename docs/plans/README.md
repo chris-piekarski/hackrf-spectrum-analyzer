@@ -11,7 +11,9 @@ Living implementation plans live here so later work (and agents) can pick them u
 
 ## Active
 
-_None._
+| Plan | Notes |
+|---|---|
+| [FM radio tuner](fm-radio-tuner.md) | In progress 2026-08-20. Listen mode stops the sweep; mono WFM via HackRF IQ. |
 
 ## Done
 

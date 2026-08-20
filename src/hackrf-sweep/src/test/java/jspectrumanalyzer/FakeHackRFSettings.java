@@ -20,6 +20,7 @@ public class FakeHackRFSettings implements HackRFSettings {
 	public final AnalyzerSettings inner = new AnalyzerSettings();
 	public int restartSweepCalls;
 	public int releaseRadioCalls;
+	public int startListenCalls;
 	public List<String> listedSerials = new ArrayList<String>();
 
 	public FakeHackRFSettings() {
@@ -32,6 +33,11 @@ public class FakeHackRFSettings implements HackRFSettings {
 			@Override
 			public void releaseRadio() {
 				releaseRadioCalls++;
+			}
+
+			@Override
+			public void startListen() {
+				startListenCalls++;
 			}
 
 			@Override
@@ -159,6 +165,31 @@ public class FakeHackRFSettings implements HackRFSettings {
 	@Override
 	public void releaseRadio() {
 		inner.releaseRadio();
+	}
+
+	@Override
+	public void startListen() {
+		inner.startListen();
+	}
+
+	@Override
+	public void stopListen() {
+		inner.stopListen();
+	}
+
+	@Override
+	public ModelValueBoolean isListening() {
+		return inner.isListening();
+	}
+
+	@Override
+	public ModelValueInt getListenKHz() {
+		return inner.getListenKHz();
+	}
+
+	@Override
+	public ModelValueInt getListenVolume() {
+		return inner.getListenVolume();
 	}
 
 	@Override

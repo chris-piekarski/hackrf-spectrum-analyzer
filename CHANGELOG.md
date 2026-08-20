@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Listen**: park the HackRF on a US FM dial and play mono audio (click a **97.3** header tag or the Listen control). Stops the sweep; **Restart** or Listen again resumes it. MCP `sweep_config` reports `radioMode` and `listenMHz` (still read-only).
 - MCP `spectrum_occupancy` (emitters above noise+8 dB, width, optional Wi-Fi `ch N` label) and `spectrum_history` (ring of summaries, new series on MHz/FFT change). `spectrum_summary` now includes `occupiedFraction` and `emitterCount`.
 
 ### Changed

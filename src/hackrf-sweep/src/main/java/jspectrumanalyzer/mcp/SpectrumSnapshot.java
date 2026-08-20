@@ -254,11 +254,24 @@ public final class SpectrumSnapshot
 		public final boolean autoScale;
 		public final boolean autoGain;
 		public final List<FmHit> fmStations;
+		public final String radioMode;
+		public final int listenKHz;
 
 		public RadioContext(boolean paused, boolean released, double sweepsPerSec, String board, String serial,
 				String firmware, String usbApi, boolean present, int radioStartMHz, int radioEndMHz, int radioFftBinHz,
 				int samples, int lnaGain, int vgaGain, boolean antennaPower, boolean antennaLna, boolean clkout,
 				String selectedSerial, boolean peaks, boolean autoScale, boolean autoGain, List<FmHit> fmStations)
+		{
+			this(paused, released, sweepsPerSec, board, serial, firmware, usbApi, present, radioStartMHz, radioEndMHz,
+					radioFftBinHz, samples, lnaGain, vgaGain, antennaPower, antennaLna, clkout, selectedSerial, peaks,
+					autoScale, autoGain, fmStations, "sweep", 0);
+		}
+
+		public RadioContext(boolean paused, boolean released, double sweepsPerSec, String board, String serial,
+				String firmware, String usbApi, boolean present, int radioStartMHz, int radioEndMHz, int radioFftBinHz,
+				int samples, int lnaGain, int vgaGain, boolean antennaPower, boolean antennaLna, boolean clkout,
+				String selectedSerial, boolean peaks, boolean autoScale, boolean autoGain, List<FmHit> fmStations,
+				String radioMode, int listenKHz)
 		{
 			this.paused = paused;
 			this.released = released;
@@ -282,6 +295,8 @@ public final class SpectrumSnapshot
 			this.autoScale = autoScale;
 			this.autoGain = autoGain;
 			this.fmStations = fmStations == null ? List.of() : List.copyOf(fmStations);
+			this.radioMode = radioMode == null || radioMode.isEmpty() ? "sweep" : radioMode;
+			this.listenKHz = listenKHz;
 		}
 
 		public String identityJson()
@@ -300,7 +315,10 @@ public final class SpectrumSnapshot
 		public String sweepConfigJson()
 		{
 			StringBuilder sb = new StringBuilder(256);
-			sb.append("{\"radio\":{");
+			sb.append('{');
+			Json.appendKey(sb, "radioMode").append(Json.quote(radioMode)).append(',');
+			Json.appendKey(sb, "listenMHz").append(Json.num(listenKHz / 1000f)).append(',');
+			sb.append("\"radio\":{");
 			Json.appendKey(sb, "startMHz").append(radioStartMHz).append(',');
 			Json.appendKey(sb, "endMHz").append(radioEndMHz).append(',');
 			Json.appendKey(sb, "fftBinHz").append(radioFftBinHz).append(',');

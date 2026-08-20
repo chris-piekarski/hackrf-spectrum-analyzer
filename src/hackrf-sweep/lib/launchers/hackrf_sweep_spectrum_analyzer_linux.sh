@@ -33,4 +33,7 @@ if [ -n "$JAVA_HOME_DIR" ] && [ ! -e "$JAVA_HOME_DIR/lib/libawt_xawt.so" ] && [ 
 fi
 
 cd "$DIRECTORY"
+if [ -z "${PULSE_SERVER:-}" ] && [ -S /mnt/wslg/PulseServer ]; then
+	export PULSE_SERVER=unix:/mnt/wslg/PulseServer
+fi
 exec "$JAVA_BIN" -Djna.platform.library.path=lib/linux-x86-64 -jar "$DIRECTORY/lib/hackrf_sweep_spectrum_analyzer.jar" "$@"

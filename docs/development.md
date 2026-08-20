@@ -18,7 +18,7 @@ This is a **hybrid JNI desktop module**, which is normal for wrapping C next to 
 | `src/test/java` | JUnit 5 (no radio) + `hw/*IT` behind `-Phardware` |
 | `pom.xml` | Java 21, Surefire, JaCoCo, fat JAR (`groupId` `io.github.chris-piekarski`) |
 | `Makefile` | Patch `lib/hackrf`, build `.so` / `.dll`, copy launchers, zip |
-| `src-c/` | Sweep-as-library patch + JNA header (not under `src/main/c` — Makefile + patch paths) |
+| `src-c/` | Sweep-as-library patch, JNA header, and first-party `hackrf_fm.c` (parked IQ RX) |
 | `lib/hackrf` | git submodule (SDK pin) |
 | `lib/fftw-3.3.5-dll64`, `lib/libusb-1.0.21` | Windows x86_64 cross-link only |
 | `lib/win32-x86-64/libwinpthread-1.dll` | Shipped next to the Windows sweep DLL |
@@ -64,7 +64,7 @@ make test
 # open src/hackrf-sweep/target/site/jacoco/index.html
 ```
 
-**Guideline**: New logic in `jspectrumanalyzer/core/` should come with unit tests. Use synthetic `DatasetSpectrum` / `FFTBins` data. Settings belong on `AnalyzerSettings` (test without a JFrame). Overlay policy belongs on `FrequencyAxis` / `BandMark` layers (test without painting). Auto-gain belongs on `AutoGainPolicy` (inject `nowMs`; do not open USB). MCP belongs on `SpectrumSnapshotStore` / `SpectrumMcpTools` (in-process JSON-RPC; no sockets required). Waterfall tick math belongs on `WaterfallTimeScale`. Reflection is acceptable for controlling time-based or internal graphics state in `PersistentDisplay` and `DatasetSpectrumPeak`.
+**Guideline**: New logic in `jspectrumanalyzer/core/` should come with unit tests. Use synthetic `DatasetSpectrum` / `FFTBins` data. Settings belong on `AnalyzerSettings` (test without a JFrame). Overlay policy belongs on `FrequencyAxis` / `BandMark` layers (test without painting). Auto-gain belongs on `AutoGainPolicy` (inject `nowMs`; do not open USB). MCP belongs on `SpectrumSnapshotStore` / `SpectrumMcpTools` (in-process JSON-RPC; no sockets required). Waterfall tick math belongs on `WaterfallTimeScale`. WFM listen belongs on `WfmDemodulator` (synthetic int8 IQ; `AudioSink` fake). Reflection is acceptable for controlling time-based or internal graphics state in `PersistentDisplay` and `DatasetSpectrumPeak`.
 
 ### Test → Coverage Workflow
 

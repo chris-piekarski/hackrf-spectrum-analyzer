@@ -39,6 +39,43 @@ public final class BandHeaderPainter
 	{
 	}
 
+	/**
+	 * Header-band hit test. {@code y} must sit in the top {@link #HEADER_H}
+	 * pixels of {@code area}. Returns the PRIMARY mark whose occupancy
+	 * contains {@code x}, preferring the nearest label center.
+	 */
+	public static BandMark hitTest(double x, double y, Rectangle2D area, FrequencyAxis axis, List<BandMark> marks)
+	{
+		if (area == null || axis == null || !axis.usable() || marks == null || marks.isEmpty())
+			return null;
+		if (y < area.getMinY() || y > area.getMinY() + HEADER_H)
+			return null;
+		if (x < area.getMinX() || x > area.getMaxX())
+			return null;
+		BandMark best = null;
+		double bestDist = Double.MAX_VALUE;
+		for (BandMark mark : marks)
+		{
+			if (mark == null || mark.style != BandMark.Style.PRIMARY)
+				continue;
+			if (!axis.occupancyVisible(mark.lowMHz, mark.highMHz))
+				continue;
+			int x1 = axis.mhzToXInt(axis.clipLow(mark.lowMHz));
+			int x2 = axis.mhzToXInt(axis.clipHigh(mark.highMHz));
+			int lo = Math.min(x1, x2);
+			int hi = Math.max(x1, x2);
+			if (x < lo || x > hi)
+				continue;
+			double d = Math.abs(x - axis.mhzToX(mark.labelMHz));
+			if (d < bestDist)
+			{
+				bestDist = d;
+				best = mark;
+			}
+		}
+		return best;
+	}
+
 	public static void paint(Graphics2D g0, Rectangle2D area, FrequencyAxis axis, List<BandMark> marks)
 	{
 		if (g0 == null || area == null || axis == null || !axis.usable() || marks == null || marks.isEmpty())

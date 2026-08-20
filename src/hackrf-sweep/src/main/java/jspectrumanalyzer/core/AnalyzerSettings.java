@@ -23,6 +23,8 @@ public final class AnalyzerSettings implements HackRFSettings
 
 		void releaseRadio();
 
+		void startListen();
+
 		List<String> listRadioSerials();
 
 		Hardware NOOP = new Hardware()
@@ -34,6 +36,11 @@ public final class AnalyzerSettings implements HackRFSettings
 
 			@Override
 			public void releaseRadio()
+			{
+			}
+
+			@Override
+			public void startListen()
 			{
 			}
 
@@ -79,6 +86,10 @@ public final class AnalyzerSettings implements HackRFSettings
 	private final ModelValueInt spectrumPaletteStart = new ModelValueInt("Spectrum palette start", 0);
 	private final ModelValueBoolean spurRemoval = new ModelValueBoolean("Spur removal", false);
 	private final ModelValueBoolean waterfallVisible = new ModelValueBoolean("Waterfall visible", true);
+	private final ModelValueBoolean listening = new ModelValueBoolean("Listening", false);
+	private final ModelValueInt listenKHz = new ModelValueInt("Listen [kHz]", 97300, 200,
+			FmChannelPlan.FIRST_CENTER_KHZ, FmChannelPlan.LAST_CENTER_KHZ);
+	private final ModelValueInt listenVolume = new ModelValueInt("Volume", 80, 1, 0, 100);
 
 	public void setHardware(Hardware hardware)
 	{
@@ -249,6 +260,7 @@ public final class AnalyzerSettings implements HackRFSettings
 	@Override
 	public void restartSweep()
 	{
+		listening.setValue(false);
 		radioReleased.setValue(false);
 		hardware.restartSweep();
 	}
@@ -256,8 +268,51 @@ public final class AnalyzerSettings implements HackRFSettings
 	@Override
 	public void releaseRadio()
 	{
+		listening.setValue(false);
 		radioReleased.setValue(true);
 		hardware.releaseRadio();
+	}
+
+	@Override
+	public void startListen()
+	{
+		listening.setValue(true);
+		radioReleased.setValue(false);
+		hardware.startListen();
+	}
+
+	@Override
+	public void stopListen()
+	{
+		if (!Boolean.TRUE.equals(listening.getValue()))
+			return;
+		listening.setValue(false);
+		if (!Boolean.TRUE.equals(radioReleased.getValue()))
+			hardware.restartSweep();
+	}
+
+	@Override
+	public ModelValueBoolean isListening()
+	{
+		return listening;
+	}
+
+	@Override
+	public ModelValueInt getListenKHz()
+	{
+		return listenKHz;
+	}
+
+	@Override
+	public ModelValueInt getListenVolume()
+	{
+		return listenVolume;
+	}
+
+	public RadioMode radioMode()
+	{
+		return RadioMode.from(Boolean.TRUE.equals(radioReleased.getValue()),
+				Boolean.TRUE.equals(listening.getValue()));
 	}
 
 	@Override

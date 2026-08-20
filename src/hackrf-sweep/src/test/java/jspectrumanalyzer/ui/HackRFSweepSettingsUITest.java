@@ -96,4 +96,24 @@ class HackRFSweepSettingsUITest {
         flushEdt();
         assertTrue(settings.getClkoutEnable().getValue());
     }
+
+    @Test
+    void listenButtonParksTheRadioWithoutRelease() throws Exception {
+        FakeHackRFSettings settings = new FakeHackRFSettings();
+        HackRFSweepSettingsUI ui = new HackRFSweepSettingsUI(settings);
+        flushEdt();
+        assertEquals("Listen", ui.listenButton().getText());
+        SwingUtilities.invokeAndWait(() -> ui.listenButton().doClick());
+        flushEdt();
+        assertEquals(1, settings.startListenCalls);
+        assertTrue(settings.isListening().getValue());
+        assertFalse(settings.isRadioReleased().getValue());
+        assertTrue(ui.listenButton().getText().contains("Listening"));
+        assertFalse(ui.pauseButton().isEnabled());
+        SwingUtilities.invokeAndWait(() -> ui.listenButton().doClick());
+        flushEdt();
+        assertFalse(settings.isListening().getValue());
+        assertEquals(1, settings.restartSweepCalls);
+        assertEquals(0, settings.releaseRadioCalls);
+    }
 }

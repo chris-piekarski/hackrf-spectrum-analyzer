@@ -79,8 +79,9 @@ Hover it for the full serial, USB API, and whether a sweep is running.
 
 | Control | What it does |
 |---|---|
-| **Restart** | Stop and start the sweep again. Use this if the plot dies after a setting change (firmware quirk) instead of pressing RESET on the board. |
-| **Stop** | Halt the native sweep and release USB so `make info`, another instance, or GNU Radio can open the stick. **Restart** takes it back. |
+| **Restart** | Stop and start the sweep again. Use this if the plot dies after a setting change (firmware quirk) instead of pressing RESET on the board. Leaves listen mode. |
+| **Stop** | Halt the native sweep (or listen) and release USB so `make info`, another instance, or GNU Radio can open the stick. **Restart** takes it back. |
+| **Listen** | Park the radio on a US FM dial (88.1–107.9) and play mono audio. **This stops the sweep** — one HackRF cannot hop and demodulate at once. The last spectrum/waterfall frame freezes. Click a live **97.3** header tag to tune that station. Volume is the slider under Listen. Click **Listening 97.3** again to resume the sweep. |
 | **Radio picker** | Serial of the HackRF to open. *First radio* is libhackrf’s default. |
 | **CLKOUT 10 MHz** | Drive the CLKOUT pin so another radio can lock. CLKIN is selected automatically when a 10 MHz signal is present. |
 
