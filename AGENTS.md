@@ -66,6 +66,8 @@ Native build requires:
 - Linux host with mingw-w64 for Windows cross-compilation
 - hackrf submodule pinned to `HACKRF_SDK_PIN` (v2026.01.3) and patched automatically (`src-c/0001-hackrf_sweep-to-library-conversion-v2026.01.3.patch`)
 
+`src/hackrf-sweep` is a **hybrid JNI module**: Maven Standard Directory Layout for Java (`src/main/java`, `src/main/resources`, `src/test/java`); Makefile + `src-c/` + `lib/hackrf` for natives. Do not commit Eclipse `.project` / `.classpath`, put CSVs under `src/main/java`, or vendor Java JARs into `lib/` (Maven owns Java deps). Windows cross-link trees stay under `lib/fftw-3.3.5-dll64` and `lib/libusb-1.0.21`. See [docs/development.md](docs/development.md#module-layout-srchackrf-sweep).
+
 ## Documentation
 
 All first-class documentation lives under `docs/`:

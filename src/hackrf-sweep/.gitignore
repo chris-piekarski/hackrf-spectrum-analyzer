@@ -1,9 +1,21 @@
+# IDE
 /.externalToolBuilders
 /.settings
+/.project
+/.classpath
+/.cproject
+/.depend
+/.idea
+*.iml
+
+# Build (Makefile natives + Maven)
 /bin
 /build
 /obj
-/res
-/lib/hackrf-sweep-jna.jar
-**.jrf
-/target/
+/target
+*.class
+*.jrf
+
+# OS
+.DS_Store
+Thumbs.db

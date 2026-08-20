@@ -84,7 +84,8 @@ After a successful build you will find:
 
 - Linux build produces both the Linux `.so` **and** the Windows `.dll` (using mingw-w64).
 - The hackrf submodule is automatically reset to v2026.01.3 and patched during build (`HACKRF_SDK_PIN` in `src/hackrf-sweep/Makefile`).
-- The Java fat JAR is built with Maven (assembly plugin).
+- The Java fat JAR is built with Maven (`maven-assembly-plugin`); there is no Ant or Eclipse JAR export.
+- Windows x86_64 cross-link uses vendored `lib/fftw-3.3.5-dll64` and `lib/libusb-1.0.21/MinGW64`. Linux links system libusb/fftw.
 
 ## Troubleshooting Builds
 

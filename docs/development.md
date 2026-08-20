@@ -8,6 +8,25 @@ cd hackrf-spectrum-analyzer
 make help
 ```
 
+## Module layout (`src/hackrf-sweep`)
+
+This is a **hybrid JNI desktop module**, which is normal for wrapping C next to Java. Maven owns the Java tree; the Makefile owns natives and the release zip.
+
+| Path | Role |
+|---|---|
+| `src/main/java`, `src/main/resources` | Maven Java sources and classpath data (`freq-*.csv`, icons) |
+| `src/test/java` | JUnit 5 (no radio) + `hw/*IT` behind `-Phardware` |
+| `pom.xml` | Java 21, Surefire, JaCoCo, fat JAR (`groupId` `io.github.chris-piekarski`) |
+| `Makefile` | Patch `lib/hackrf`, build `.so` / `.dll`, copy launchers, zip |
+| `src-c/` | Sweep-as-library patch + JNA header (not under `src/main/c` — Makefile + patch paths) |
+| `lib/hackrf` | git submodule (SDK pin) |
+| `lib/fftw-3.3.5-dll64`, `lib/libusb-1.0.21` | Windows x86_64 cross-link only |
+| `lib/win32-x86-64/libwinpthread-1.dll` | Shipped next to the Windows sweep DLL |
+| `lib/launchers`, `lib/program.ico` | Start scripts and package icons |
+| `build/`, `target/`, `obj/` | Generated — not source |
+
+Do **not** put CSV/icons under `src/main/java`. Do not commit Eclipse `.project` / `.classpath`. Java dependencies come from Maven, not `lib/*.jar`. Do not vendor Ant / JNAerator / 32-bit Windows trees.
+
 ## Daily Development Workflow
 
 ```mermaid

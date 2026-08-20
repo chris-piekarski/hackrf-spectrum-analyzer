@@ -1,6 +1,6 @@
-# This will build windows and linux versions of required native libraries 
-# The following utilities have to be installed (tested on ubuntu 18.04):
-# build-essential ant git libusb-1.0 libfftw3-dev libfftw3-bin mingw-w64 openjdk-21-jdk libfftw3-bin libusb-1.0  
+# Native Linux + Windows (mingw) libraries, then Maven fat JAR.
+# Host packages (Ubuntu 22.04+): build-essential git maven openjdk-21-jdk
+# libusb-1.0-0-dev libfftw3-dev libfftw3-bin mingw-w64  
 
 # Use 'make help' for a colorful categorized list of targets.
 
@@ -42,10 +42,8 @@ SOURCES= \
 lib/hackrf/host/libhackrf/src/hackrf.c \
 lib/hackrf/host/hackrf-tools/src/hackrf_sweep.c
 
-INCLUDE_PATHS= -Ilib/hackrf/host/libhackrf/src -I$(LIBUSB_DIR)/include/libusb-1.0 -Ilib/fftw-3.3.5-dll64  
-JNA_LIB= lib/hackrf-sweep-jna.jar
+INCLUDE_PATHS= -Ilib/hackrf/host/libhackrf/src -I$(LIBUSB_DIR)/include/libusb-1.0 -Ilib/fftw-3.3.5-dll64
 LIBUSB_DIR= lib/libusb-1.0.21
-JNA_SWEEP_HEADER= $(CURDIR)/lib/hackrf/host/hackrf-tools/src/hackrf_sweep.h
 MAIN_JAR= $(OUTPUT_PATH)/lib/hackrf_sweep_spectrum_analyzer.jar
 
 OBJECT_SUFFIX= o
@@ -94,15 +92,12 @@ DLL_LIB_USB= $(LIBUSB_DIR)/MinGW64/dll/libusb-1.0.dll
 LDFLAGS_WIN+= -Wl,--kill-at  -static-libgcc -static-libstdc++ -shared
 
 # Linux build setup
-ANT_PATH= ""
-#required installed libraries for linux: openjdk-21 (headful), libfftw3, libusb-1.0 
-JDK_EXECUTABLE= java #required to generate jna wrapper
+# required installed libraries: openjdk-21 (headful), libfftw3, libusb-1.0
 DLL_LIB= $(OUTPUT_DLL_DIR)/libhackrf-sweep.so
 LDLIBS= -lusb-1.0 -lfftw3 -lfftw3f
 CFLAGS+= -march=x86-64
 LIB_DIR= linux-x86-64
 
-JNAERATOR= $(CURDIR)/lib/jnaerator/jnaerator-0.13-20150328.111636-4-shaded.jar
 ZIP_FILE= hackrf_spectrum_analyzer.zip
 ZIP_FILE_PATH= $(OUTPUT_PATH)/../
 
@@ -174,7 +169,7 @@ $(BUILD_PATH)/%.c.$(OBJECT_SUFFIX_WIN): %.c
 .PHONY: clean
 clean: ## Clean all build artifacts (mvn + obj + build dirs)
 	mvn clean
-	rm -f  $(MAIN_JAR) $(OBJECTS) $(OBJECTS_WIN) $(DLL_LIB) $(DLL_LIB_WIN) # $(JNA_LIB)
+	rm -f  $(MAIN_JAR) $(OBJECTS) $(OBJECTS_WIN) $(DLL_LIB) $(DLL_LIB_WIN)
 	rm -rf $(OUTPUT_DLL_DIR) $(BUILD_PATH) $(OUTPUT_PATH)/* bin/*
 
 ##@ Test & Quality

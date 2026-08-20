@@ -55,7 +55,7 @@ Read-only Model Context Protocol on the **same JVM** as the GUI (no second USB o
 ### Build System
 - Root `Makefile` — convenience targets (`make help`, `make test`, `make start`, etc.).
 - `src/hackrf-sweep/Makefile` — the real engine (cross-compiles natives + invokes Maven).
-- Maven (`pom.xml`) — Java compilation, dependency management, fat JAR assembly.
+- Maven (`pom.xml`) — Java compilation, dependency management, fat JAR assembly. Layout: [development.md — Module layout](development.md#module-layout-srchackrf-sweep).
 
 ## Design Goals
 

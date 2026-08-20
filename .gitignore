@@ -3,3 +3,8 @@
 /*.cmd
 /*.exe
 *.swp
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
