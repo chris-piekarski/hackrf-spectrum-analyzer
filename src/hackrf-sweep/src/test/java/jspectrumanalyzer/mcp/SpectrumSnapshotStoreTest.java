@@ -95,4 +95,44 @@ class SpectrumSnapshotStoreTest {
 		store.publishContext(settings, List.of(hit), 12.5);
 		assertTrue(store.context().fmStationsJson().contains("97.3"));
 	}
+
+	@Test
+	void historyUsesSummariesAndDropsADifferentAxis() {
+		SpectrumSnapshotStore store = new SpectrumSnapshotStore(10);
+		AnalyzerSettings settings = new AnalyzerSettings();
+		settings.getGainLNA().setValue(16);
+		settings.getGainVGA().setValue(8);
+		store.publishContext(settings, List.of(), 10);
+		DatasetSpectrum wifi = new DatasetSpectrum(100_000f, 2402, 2472, -150f);
+		for (int i = 0; i < wifi.spectrumLength(); i++)
+			wifi.getSpectrumArray()[i] = -80f;
+		wifi.getSpectrumArray()[50] = -40f;
+		for (int t = 1000; t <= 1500; t += 100)
+			store.publishSweep(SpectrumSnapshot.fromDataset(wifi, t, 400, null), t);
+		DatasetSpectrum fm = new DatasetSpectrum(100_000f, 88, 108, -150f);
+		for (int i = 0; i < fm.spectrumLength(); i++)
+			fm.getSpectrumArray()[i] = -80f;
+		fm.getSpectrumArray()[10] = -50f;
+		store.publishSweep(SpectrumSnapshot.fromDataset(fm, 2000, 400, null), 2000);
+		String hist = store.historyJson(5.0, 50);
+		assertTrue(hist.contains("\"startMHz\":88"));
+		assertFalse(hist.contains("2402"), "Wi-Fi samples must not stitch onto FM");
+		assertTrue(hist.contains("\"sampleCount\":1"));
+		assertTrue(hist.contains("occupiedFraction"));
+		assertTrue(hist.contains("lnaGain"));
+		assertTrue(hist.contains("16"));
+	}
+
+	@Test
+	void historyHonorsMaxSamplesAndTimeWindow() {
+		SpectrumSnapshotStore store = new SpectrumSnapshotStore(20);
+		DatasetSpectrum ds = new DatasetSpectrum(100_000f, 88, 108, -150f);
+		ds.getSpectrumArray()[5] = -40f;
+		for (int t = 0; t < 10; t++)
+			store.publishSweep(SpectrumSnapshot.fromDataset(ds, t * 1000L, 200, null), t * 1000L);
+		String few = store.historyJson(30.0, 3);
+		assertTrue(few.contains("\"sampleCount\":3"));
+		String recent = store.historyJson(1.5, 50);
+		assertTrue(recent.contains("\"sampleCount\":2") || recent.contains("\"sampleCount\":1"));
+	}
 }

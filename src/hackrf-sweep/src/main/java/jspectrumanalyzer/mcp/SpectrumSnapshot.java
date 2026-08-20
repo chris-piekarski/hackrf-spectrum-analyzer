@@ -211,6 +211,14 @@ public final class SpectrumSnapshot
 		Json.appendKey(sb, "noiseDbm").append(Json.num(noiseDbm)).append(',');
 		Json.appendKey(sb, "peakDbm").append(Json.num(peakDbm)).append(',');
 		Json.appendKey(sb, "peakMhz").append(Json.num(peakMhz));
+		if (!isEmpty())
+		{
+			jspectrumanalyzer.core.SpectrumOccupancy.Result occ = jspectrumanalyzer.core.SpectrumOccupancy.from(mhz, dbm,
+					noiseDbm, fftBinHz, startMHz, endMHz);
+			sb.append(',');
+			Json.appendKey(sb, "occupiedFraction").append(Json.num(occ.occupiedFraction)).append(',');
+			Json.appendKey(sb, "emitterCount").append(occ.emitters.size());
+		}
 		if (ctx != null)
 		{
 			sb.append(',');

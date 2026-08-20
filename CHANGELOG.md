@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- MCP `spectrum_occupancy` (emitters above noise+8 dB, width, optional Wi-Fi `ch N` label) and `spectrum_history` (ring of summaries, new series on MHz/FFT change). `spectrum_summary` now includes `occupiedFraction` and `emitterCount`.
+
 ### Changed
 - Docs and GitHub about/topics present the app as an **MCP interface for AI agents** on a live HackRF sweep (same JVM as the GUI). New [docs/mcp.md](docs/mcp.md).
 

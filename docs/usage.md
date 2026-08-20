@@ -41,7 +41,7 @@ Point a local MCP client at the stdio proxy (the GUI must already be listening):
 }
 ```
 
-Tools: `spectrum_summary`, `spectrum_snapshot` (optional `maxPoints`, `minDbm`), `radio_identity`, `sweep_config` (radio vs display, including `autoScale` and `autoGain`), `fm_stations`. Unfilled hop holes are omitted, not reported as −150 dBm. Snapshots are sampled at most 10 times per second. Agents cannot change frequency or gain in v1. The GUI must already hold the radio; MCP does not open a second USB device.
+Tools: `spectrum_summary`, `spectrum_snapshot` (optional `maxPoints`, `minDbm`), `radio_identity`, `sweep_config` (radio vs display, including `autoScale` and `autoGain`), `fm_stations`, `spectrum_occupancy`, `spectrum_history` (summaries, optional `seconds` / `maxSamples`). Unfilled hop holes are omitted, not reported as −150 dBm. Snapshots are sampled at most 10 times per second. Agents cannot change frequency or gain in v1. The GUI must already hold the radio; MCP does not open a second USB device.
 
 ## What you are looking at
 

@@ -3,6 +3,7 @@ package jspectrumanalyzer.mcp;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import jspectrumanalyzer.core.AnalyzerSettings;
 import jspectrumanalyzer.core.FmBandLayer;
@@ -19,12 +20,15 @@ import jspectrumanalyzer.mcp.SpectrumSnapshot.RadioContext;
  */
 public final class SpectrumSnapshotStore
 {
-	public static final int DEFAULT_RING = 32;
+	/** ~20 s at the 10 Hz publish cap. */
+	public static final int DEFAULT_RING = 200;
 	public static final long MIN_PUBLISH_INTERVAL_MS = 100L;
+	public static final double DEFAULT_HISTORY_SEC = 15;
+	public static final int DEFAULT_HISTORY_SAMPLES = 50;
 
 	private final Object lock = new Object();
 	private final int ringCap;
-	private final ArrayDeque<SpectrumSnapshot> ring;
+	private final ArrayDeque<RingEntry> ring;
 	private SpectrumSnapshot latest = SpectrumSnapshot.empty(0L);
 	private RadioContext context;
 	private long lastPublishMs;
@@ -37,7 +41,7 @@ public final class SpectrumSnapshotStore
 	public SpectrumSnapshotStore(int ringCap)
 	{
 		this.ringCap = Math.max(1, ringCap);
-		this.ring = new ArrayDeque<SpectrumSnapshot>(this.ringCap);
+		this.ring = new ArrayDeque<RingEntry>(this.ringCap);
 		this.context = new RadioContext(false, false, 0, null, null, null, null, false, 0, 0, 0, 0, 0, 0, false, false,
 				false, "", false, false, false, List.of());
 	}
@@ -54,13 +58,17 @@ public final class SpectrumSnapshotStore
 	{
 		if (snap == null)
 			return;
+		int lna;
+		int vga;
 		synchronized (lock)
 		{
+			lna = context == null ? 0 : context.lnaGain;
+			vga = context == null ? 0 : context.vgaGain;
 			latest = snap;
 			lastPublishMs = nowMs;
 			if (ring.size() >= ringCap)
 				ring.removeFirst();
-			ring.addLast(snap);
+			ring.addLast(new RingEntry(snap, lna, vga));
 		}
 	}
 
@@ -126,6 +134,94 @@ public final class SpectrumSnapshotStore
 		synchronized (lock)
 		{
 			return ring.size();
+		}
+	}
+
+	/** Oldest-first copy of the ring. */
+	public List<RingEntry> ringCopy()
+	{
+		synchronized (lock)
+		{
+			return List.copyOf(ring);
+		}
+	}
+
+	public String historyJson(Double seconds, Integer maxSamples)
+	{
+		double sec = seconds == null || !(seconds.doubleValue() > 0) ? DEFAULT_HISTORY_SEC : seconds.doubleValue();
+		int cap = maxSamples == null || maxSamples.intValue() < 1 ? DEFAULT_HISTORY_SAMPLES : maxSamples.intValue();
+		SpectrumSnapshot now;
+		List<RingEntry> entries;
+		synchronized (lock)
+		{
+			now = latest;
+			entries = List.copyOf(ring);
+		}
+		if (now == null || now.isEmpty())
+			return "{\"error\":\"no sweep yet\",\"samples\":[]}";
+		long oldestTs = now.timestampMs - (long) Math.round(sec * 1000.0);
+		List<RingEntry> same = new ArrayList<>();
+		for (RingEntry e : entries)
+		{
+			if (e == null || e.snap == null || e.snap.isEmpty())
+				continue;
+			if (!sameAxis(now, e.snap))
+				continue;
+			if (e.snap.timestampMs < oldestTs)
+				continue;
+			same.add(e);
+		}
+		if (same.size() > cap)
+			same = same.subList(same.size() - cap, same.size());
+		StringBuilder sb = new StringBuilder(64 + same.size() * 96);
+		sb.append('{');
+		SpectrumSnapshot.Json.appendKey(sb, "seconds").append(String.format(Locale.US, "%.1f", sec)).append(',');
+		SpectrumSnapshot.Json.appendKey(sb, "startMHz").append(now.startMHz).append(',');
+		SpectrumSnapshot.Json.appendKey(sb, "endMHz").append(now.endMHz).append(',');
+		SpectrumSnapshot.Json.appendKey(sb, "sampleCount").append(same.size()).append(',');
+		SpectrumSnapshot.Json.appendKey(sb, "samples").append('[');
+		for (int i = 0; i < same.size(); i++)
+		{
+			if (i > 0)
+				sb.append(',');
+			RingEntry e = same.get(i);
+			jspectrumanalyzer.core.SpectrumOccupancy.Result occ = jspectrumanalyzer.core.SpectrumOccupancy.from(e.snap.mhz,
+					e.snap.dbm, e.snap.noiseDbm, e.snap.fftBinHz, e.snap.startMHz, e.snap.endMHz);
+			sb.append('{');
+			SpectrumSnapshot.Json.appendKey(sb, "timestampMs").append(e.snap.timestampMs).append(',');
+			SpectrumSnapshot.Json.appendKey(sb, "startMHz").append(e.snap.startMHz).append(',');
+			SpectrumSnapshot.Json.appendKey(sb, "endMHz").append(e.snap.endMHz).append(',');
+			SpectrumSnapshot.Json.appendKey(sb, "noiseDbm").append(SpectrumSnapshot.Json.num(e.snap.noiseDbm)).append(',');
+			SpectrumSnapshot.Json.appendKey(sb, "peakDbm").append(SpectrumSnapshot.Json.num(e.snap.peakDbm)).append(',');
+			SpectrumSnapshot.Json.appendKey(sb, "peakMhz").append(SpectrumSnapshot.Json.num(e.snap.peakMhz)).append(',');
+			SpectrumSnapshot.Json.appendKey(sb, "occupiedFraction").append(SpectrumSnapshot.Json.num(occ.occupiedFraction))
+					.append(',');
+			SpectrumSnapshot.Json.appendKey(sb, "lnaGain").append(e.lnaGain).append(',');
+			SpectrumSnapshot.Json.appendKey(sb, "vgaGain").append(e.vgaGain);
+			sb.append('}');
+		}
+		sb.append("]}");
+		return sb.toString();
+	}
+
+	static boolean sameAxis(SpectrumSnapshot a, SpectrumSnapshot b)
+	{
+		if (a == null || b == null)
+			return false;
+		return a.startMHz == b.startMHz && a.endMHz == b.endMHz && Math.abs(a.fftBinHz - b.fftBinHz) < 1f;
+	}
+
+	public static final class RingEntry
+	{
+		public final SpectrumSnapshot snap;
+		public final int lnaGain;
+		public final int vgaGain;
+
+		public RingEntry(SpectrumSnapshot snap, int lnaGain, int vgaGain)
+		{
+			this.snap = snap;
+			this.lnaGain = lnaGain;
+			this.vgaGain = vgaGain;
 		}
 	}
 }

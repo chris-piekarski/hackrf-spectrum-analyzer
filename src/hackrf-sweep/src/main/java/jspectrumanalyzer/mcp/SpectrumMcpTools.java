@@ -53,6 +53,15 @@ public final class SpectrumMcpTools
 				+ tool("fm_stations",
 						"Live FM dial hits for an FM-scale view, or an empty list when zoomed out.",
 						"{\"type\":\"object\",\"properties\":{}}")
+				+ ","
+				+ tool("spectrum_occupancy",
+						"Emitters above noise+8 dB: width, occupied fraction, optional Wi-Fi ch label.",
+						"{\"type\":\"object\",\"properties\":{}}")
+				+ ","
+				+ tool("spectrum_history",
+						"Recent summaries from the snapshot ring (not full bins). Optional seconds and maxSamples.",
+						"{\"type\":\"object\",\"properties\":{\"seconds\":{\"type\":\"number\",\"minimum\":0.1},"
+								+ "\"maxSamples\":{\"type\":\"integer\",\"minimum\":1}}}")
 				+ "]}";
 	}
 
@@ -72,6 +81,10 @@ public final class SpectrumMcpTools
 			return textResult(store.context().sweepConfigJson(), false);
 		if ("fm_stations".equals(name))
 			return textResult(store.context().fmStationsJson(), false);
+		if ("spectrum_occupancy".equals(name))
+			return occupancyCall();
+		if ("spectrum_history".equals(name))
+			return historyCall(args);
 		throw new IllegalArgumentException("unknown tool: " + name);
 	}
 
@@ -113,6 +126,25 @@ public final class SpectrumMcpTools
 			}
 		}
 		return McpJson.rpcError(id, -32601, "method not found: " + method);
+	}
+
+	private String occupancyCall()
+	{
+		SpectrumSnapshot latest = store.latest();
+		if (latest == null || latest.isEmpty())
+			return textResult("{\"error\":\"no sweep yet\",\"emitters\":[]}", true);
+		jspectrumanalyzer.core.SpectrumOccupancy.Result occ = jspectrumanalyzer.core.SpectrumOccupancy.from(latest.mhz,
+				latest.dbm, latest.noiseDbm, latest.fftBinHz, latest.startMHz, latest.endMHz);
+		return textResult(occ.toJson(), false);
+	}
+
+	private String historyCall(Map<String, Object> args)
+	{
+		Double seconds = McpJson.getDouble(args, "seconds");
+		Integer max = McpJson.getInt(args, "maxSamples");
+		String json = store.historyJson(seconds, max);
+		boolean empty = store.latest() == null || store.latest().isEmpty();
+		return textResult(json, empty);
 	}
 
 	private String snapshotCall(Map<String, Object> args)

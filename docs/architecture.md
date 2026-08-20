@@ -50,7 +50,7 @@ These are the best candidates for unit testing (and have the majority of our tes
 - `HackRFSweepSettingsUI`, Quick Select (`QuickSelectPreset`), `SweepStatusBar`, radio identity (board / serial / firmware). Spectrum overlays share `FrequencyAxis` + `BandHeaderPainter`: Wi-Fi (`WifiBandLayer`), live US FM (`FmBandLayer` + `FmStationTracker`), and zoomed-out Quick Select (`QuickSelectBandLayer`). Frequency zoom (`SpectrumZoom` + `SpectrumZoomHistory`) retunes the sweep like a Grafana time-range drag.
 
 ### MCP (`jspectrumanalyzer/mcp/`)
-Read-only Model Context Protocol on the **same JVM** as the GUI (no second USB open). `SweepUiHooks.onFullSweepProcessed` copies filled bins into `SpectrumSnapshotStore` at ≤10 Hz. `SpectrumMcpServer` speaks JSON-RPC (`Content-Length` or one object per line) on stdio or `127.0.0.1:8765` (`--mcp` / `make mcp`). Tools: `spectrum_summary`, `spectrum_snapshot`, `radio_identity`, `sweep_config` (radio vs display, including `autoGain`), `fm_stations`. Hop holes are omitted. Stdio clients use `scripts/mcp-spectrum-proxy.py`.
+Read-only Model Context Protocol on the **same JVM** as the GUI (no second USB open). `SweepUiHooks.onFullSweepProcessed` copies filled bins into `SpectrumSnapshotStore` at ≤10 Hz. `SpectrumMcpServer` speaks JSON-RPC (`Content-Length` or one object per line) on stdio or `127.0.0.1:8765` (`--mcp` / `make mcp`). Tools: `spectrum_summary`, `spectrum_snapshot`, `radio_identity`, `sweep_config` (radio vs display, including `autoGain`), `fm_stations`, `spectrum_occupancy` (emitters + fraction), `spectrum_history` (ring summaries). Hop holes are omitted. Stdio clients use `scripts/mcp-spectrum-proxy.py`.
 
 ### Build System
 - Root `Makefile` — convenience targets (`make help`, `make test`, `make start`, etc.).

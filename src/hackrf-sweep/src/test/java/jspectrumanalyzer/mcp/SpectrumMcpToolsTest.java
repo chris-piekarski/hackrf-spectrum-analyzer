@@ -47,6 +47,8 @@ class SpectrumMcpToolsTest {
 		assertTrue(list.contains("radio_identity"));
 		assertTrue(list.contains("sweep_config"));
 		assertTrue(list.contains("fm_stations"));
+		assertTrue(list.contains("spectrum_occupancy"));
+		assertTrue(list.contains("spectrum_history"));
 		assertNull(tools.handleRpc("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"));
 	}
 
@@ -74,6 +76,37 @@ class SpectrumMcpToolsTest {
 		assertTrue(cfg.contains("fftBinHz"));
 		assertTrue(cfg.contains("100000"));
 		assertFalse(cfg.contains("persistent"));
+	}
+
+	@Test
+	void occupancyAndHistoryAreJsonRpcTextResults() {
+		SpectrumMcpTools tools = toolsWithSweep();
+		String occ = tools.handleRpc(
+				"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"spectrum_occupancy\"}}");
+		assertTrue(occ.contains("emitters"));
+		assertTrue(occ.contains("occupiedFraction"));
+		assertFalse(occ.contains("\"isError\":true"));
+		String hist = tools.handleRpc(
+				"{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"spectrum_history\",\"arguments\":{\"seconds\":15,\"maxSamples\":10}}}");
+		assertTrue(hist.contains("samples"));
+		assertTrue(hist.contains("2402"));
+		String sum = tools.handleRpc(
+				"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"spectrum_summary\"}}");
+		assertTrue(sum.contains("occupiedFraction"));
+		assertTrue(sum.contains("emitterCount"));
+	}
+
+	@Test
+	void occupancyOnEmptyStoreIsAnErrorPayload() {
+		SpectrumMcpTools tools = new SpectrumMcpTools(new SpectrumSnapshotStore());
+		String occ = tools.handleRpc(
+				"{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"spectrum_occupancy\"}}");
+		assertTrue(occ.contains("no sweep yet"));
+		assertTrue(occ.contains("\"isError\":true"));
+		String hist = tools.handleRpc(
+				"{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/call\",\"params\":{\"name\":\"spectrum_history\"}}");
+		assertTrue(hist.contains("no sweep yet"));
+		assertTrue(hist.contains("\"isError\":true"));
 	}
 
 	@Test

@@ -124,4 +124,41 @@ public final class WifiChannelPlan
 		return null;
 	}
 
+	/** True if {@code [start,end]} overlaps the US 2.4 or 5 GHz occupied envelope. */
+	public static boolean viewIsWifi(double startMHz, double endMHz)
+	{
+		return rangesOverlap(startMHz, endMHz, WIFI_24_OCCUPIED_START_MHZ, WIFI_24_OCCUPIED_END_MHZ)
+				|| rangesOverlap(startMHz, endMHz, WIFI_5_OCCUPIED_START_MHZ, WIFI_5_OCCUPIED_END_MHZ);
+	}
+
+	/**
+	 * Label like {@code ch 6} when the view is Wi-Fi and {@code peakMhz} sits
+	 * in a 20 MHz occupancy. Overlapping 2.4 GHz channels pick the closest
+	 * center. Null outside Wi-Fi views (do not invent LTE/FM from power).
+	 */
+	public static String labelForPeak(double peakMhz, double viewStartMHz, double viewEndMHz)
+	{
+		if (!viewIsWifi(viewStartMHz, viewEndMHz))
+			return null;
+		WifiChannel best = null;
+		double bestDist = Double.POSITIVE_INFINITY;
+		for (WifiChannel ch : ALL)
+		{
+			if (peakMhz < ch.lowMHz() || peakMhz > ch.highMHz())
+				continue;
+			double dist = Math.abs(ch.centerMHz - peakMhz);
+			if (dist < bestDist)
+			{
+				bestDist = dist;
+				best = ch;
+			}
+		}
+		return best == null ? null : "ch " + best.number;
+	}
+
+	private static boolean rangesOverlap(double a0, double a1, double b0, double b1)
+	{
+		return a1 > b0 && a0 < b1;
+	}
+
 }

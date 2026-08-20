@@ -128,4 +128,13 @@ class WifiChannelPlanTest {
 		assertEquals(6, ordered.get(1).number);
 		assertEquals(11, ordered.get(2).number);
 	}
+
+	@Test
+	void labelForPeakIsWifiOnlyAndPicksClosestCenter() {
+		assertEquals("ch 6", WifiChannelPlan.labelForPeak(2437, 2402, 2472));
+		assertEquals("ch 1", WifiChannelPlan.labelForPeak(2412, 2402, 2472));
+		assertEquals("ch 36", WifiChannelPlan.labelForPeak(5180, 5170, 5895));
+		assertNull(WifiChannelPlan.labelForPeak(97.3, 88, 108));
+		assertNull(WifiChannelPlan.labelForPeak(2437, 88, 108));
+	}
 }
