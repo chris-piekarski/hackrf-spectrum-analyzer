@@ -45,7 +45,7 @@ make test
 # open src/hackrf-sweep/target/site/jacoco/index.html
 ```
 
-**Guideline**: New logic in `jspectrumanalyzer/core/` should come with unit tests. Use synthetic `DatasetSpectrum` / `FFTBins` data. Settings belong on `AnalyzerSettings` (test without a JFrame). Overlay policy belongs on `FrequencyAxis` / `BandMark` layers (test without painting). Reflection is acceptable for controlling time-based or internal graphics state in `PersistentDisplay` and `DatasetSpectrumPeak`.
+**Guideline**: New logic in `jspectrumanalyzer/core/` should come with unit tests. Use synthetic `DatasetSpectrum` / `FFTBins` data. Settings belong on `AnalyzerSettings` (test without a JFrame). Overlay policy belongs on `FrequencyAxis` / `BandMark` layers (test without painting). Auto-gain belongs on `AutoGainPolicy` (inject `nowMs`; do not open USB). MCP belongs on `SpectrumSnapshotStore` / `SpectrumMcpTools` (in-process JSON-RPC; no sockets required). Waterfall tick math belongs on `WaterfallTimeScale`. Reflection is acceptable for controlling time-based or internal graphics state in `PersistentDisplay` and `DatasetSpectrumPeak`.
 
 ### Test → Coverage Workflow
 
@@ -133,10 +133,13 @@ That marks upstream as an ancestor so GitHub shows 0 behind, while leaving this 
 
 ## Releasing
 
-1. Bump version in `Version.java` (and any other places).
-2. Run full `make build`.
-3. Test the resulting zip/launcher on target platforms.
-4. Tag and push.
+Current app version is **2.0.0** (`Version.java`, Maven `pom.xml`, MCP `SERVER_VERSION`, GitHub tag `v2.0.0`).
+
+1. Bump `Version.java`, `src/hackrf-sweep/pom.xml`, `SpectrumMcpTools.SERVER_VERSION`, and move `[Unreleased]` in `CHANGELOG.md` to a dated section.
+2. Run `make stats` (do not hand-edit `docs/stats.md`).
+3. Run full `make build`.
+4. Test the resulting zip/launcher on target platforms.
+5. Tag `vX.Y.Z`, push `master` + the tag, and `gh release create` with notes (and the Linux zip if you have it).
 
 ## Getting Help
 

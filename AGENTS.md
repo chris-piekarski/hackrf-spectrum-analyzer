@@ -4,18 +4,18 @@ This document provides guidance for AI coding agents (and human contributors) wo
 
 ## Project Overview
 
-This is a Java desktop spectrum analyzer GUI optimized for the HackRF One SDR (USB device). It wraps the `hackrf_sweep` tool as a native shared library (via JNA) for high-performance wideband sweeps.
+This is a Java desktop **HackRF spectrum analyzer with a live MCP interface** for AI agents. It wraps `hackrf_sweep` as a native shared library (via JNA) for high-performance wideband sweeps, and exposes the same bins to Grok/Claude/Cursor over localhost MCP (`make mcp`) without a second USB open.
 
 Key technologies:
 - Java 21+ (Swing UI + FlatLaf + JFreeChart for plots)
 - Native C (hackrf library v2026.01.3 + custom sweep-as-library patch)
 - Maven for Java build
 - Custom Makefile for cross-platform native + Java packaging (Linux + Windows)
-- Supports real-time spectrum, waterfall, peak/persistent display, spur filter, frequency allocations, quick band selectors, and Antenna LNA (+14 dB) control.
+- Supports real-time spectrum, waterfall (left-side time scale), peak/persistent display, spur filter, frequency allocations, quick band selectors, Auto gain, Antenna LNA (+14 dB), and an opt-in read-only MCP server.
 
 The project is a maintained fork of [pavsa/hackrf-spectrum-analyzer](https://github.com/pavsa/hackrf-spectrum-analyzer) with added quick-select UI and significant test coverage improvements.
 
-**Primary use case**: Users with a physical HackRF One USB device.
+**Primary use case**: An operator with a physical HackRF One, plus an optional local MCP client that reads the live sweep.
 
 ## Essential Commands
 
@@ -39,6 +39,7 @@ This shows all available targets with descriptions and categories (colorized).
 - `make stats` — Rewrite [docs/stats.md](docs/stats.md) (first-party LOC, packages, tests, git). Do not hand-edit that file.
 - `make mermaid` — Parse-check every first-party Mermaid fence (`mmdc` when installed)
 - `make start` — Build (if needed) + launch the Linux app
+- `make mcp` — Same as `start`, plus MCP on `127.0.0.1:8765` (`--mcp`)
 - `make clean` — Clean build artifacts
 - `make run` — Alias for `start`
 
@@ -74,8 +75,9 @@ All first-class documentation lives under `docs/`:
 - [docs/building.md](docs/building.md) — Build process & Makefile targets
 - [docs/development.md](docs/development.md) — Dev workflow, testing, linting
 - [docs/hackrf-setup.md](docs/hackrf-setup.md) — Hardware, udev, firmware, Zadig
+- [docs/mcp.md](docs/mcp.md) — MCP for AI agents (tools, proxy, v1 limits)
 - [docs/usage.md](docs/usage.md) — Running the analyzer, features, quick selects
-- [docs/architecture.md](docs/architecture.md) — High-level design (core, native, UI)
+- [docs/architecture.md](docs/architecture.md) — High-level design (core, native, UI, MCP)
 - [docs/stats.md](docs/stats.md) — generated first-party stats (`make stats`)
 - [docs/contributing.md](docs/contributing.md)
 - [docs/plans/](docs/plans/README.md) — living implementation plans (status + checklists must stay current)
@@ -104,9 +106,11 @@ Root-level files:
 ### Adding Features
 
 - Core DSP changes (SpurFilter, peaks, spectrum datasets, etc.) **must** have corresponding unit tests.
-- Operator settings live in `AnalyzerSettings` (implements `HackRFSettings`). Do not add new `ModelValue` fields on the analyzer JFrame. Mark radio vs display via `isRadioSetting`.
+- Operator settings live in `AnalyzerSettings` (implements `HackRFSettings`). Do not add new `ModelValue` fields on the analyzer JFrame. Mark radio vs display via `isRadioSetting`. Auto gain is display policy; the LNA/VGA values it writes are radio settings.
 - Plot overlays go through `FrequencyAxis` + `BandMark` + `BandHeaderPainter`. Do not invent a second MHz↔pixel map.
-- Live agent access is `jspectrumanalyzer.mcp.SpectrumSnapshotStore`, updated from `onFullSweepProcessed`. MCP tools are read-only; do not restart USB from a snapshot tool. Start with `--mcp` / `make mcp` (localhost 8765).
+- Native interleaved hops export 5 MHz slices with holes. Pad USB start/stop with `FrequencyRange.forInterleavedNativeSweep()` (±10 MHz) so the requested window (e.g. FM 88–108) is actually filled. Dataset/axis stay on the operator range.
+- Live agent access is `jspectrumanalyzer.mcp` (`SpectrumSnapshotStore` from `onFullSweepProcessed`, `SpectrumMcpServer` JSON-RPC). Tools are read-only (`spectrum_summary`, `spectrum_snapshot`, `radio_identity`, `sweep_config`, `fm_stations`); do not restart USB from a snapshot tool. Start with `--mcp` / `make mcp` (localhost 8765). Stdio shim: `scripts/mcp-spectrum-proxy.py`.
+- Auto-gain (`AutoGainPolicy`) must not pump: one Wi-Fi packet is not clip; a disappeared burst is not compression; settle after each apply; do not `clearHistory()` on a gain-only restart (`DatasetSpectrum.sameAxisAs`).
 - UI changes should be accompanied by updates to `docs/usage.md`.
 - New Makefile targets must be added to both the root `Makefile` and the detailed `src/hackrf-sweep/Makefile`, with proper `##` descriptions for `make help`.
 - When touching native code, ensure the patch in `src-c/` and build process still work.
@@ -135,8 +139,10 @@ GitHub's "ahead/behind" count vs `pavsa/hackrf-spectrum-analyzer` is misleading:
 
 - Full end-to-end testing requires a real HackRF One + proper udev permissions.
 - The native build is Linux-only for cross-compilation (mingw).
-- Some UI components are still difficult to unit test (Swing-heavy). Focus unit tests on `core/` logic.
+- Some UI components are still difficult to unit test (Swing-heavy). Focus unit tests on `core/` logic (`AutoGainPolicy`, `SpectrumPowerScale`, MCP store/tools without sockets).
 - `HackrfSweepLibrary` is hand-maintained (`make jnabridge` does not run JNAerator). The UI requires a **headful** JDK 21+.
+- Long runs on WSL/X11 can SIGSEGV in `libawt` while JFreeChart paints the spectrum line (`ChartPanel` / `FillAAPgram`). That is native AWT, not the sweep engine.
+- AGC still restarts USB when it actually changes LNA/VGA; only the waterfall mapping (same MHz/FFT) is preserved across that restart.
 
 ## Questions?
 

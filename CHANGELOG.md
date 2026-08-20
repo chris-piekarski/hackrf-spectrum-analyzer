@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Docs and GitHub about/topics present the app as an **MCP interface for AI agents** on a live HackRF sweep (same JVM as the GUI). New [docs/mcp.md](docs/mcp.md).
+
+### Fixed
+- Auto-gain was restarting the radio in a 32↔40 dB loop on Wi-Fi (quiet gap raised, a packet or a dropped burst reversed it). Each restart wiped the waterfall. Gain now only drops on real clip or a sustained hot streak; a disappeared burst is not treated as compression. The waterfall history is kept across gain-only retunes.
+
 ## [2.0.0] - 2026-08-19
 
 ### Added

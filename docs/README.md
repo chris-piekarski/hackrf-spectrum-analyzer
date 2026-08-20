@@ -1,14 +1,15 @@
 # Documentation
 
-This directory contains the first-class documentation for the **hackrf-spectrum-analyzer** project.
+This directory contains the first-class documentation for the **hackrf-spectrum-analyzer** project: a HackRF GUI with a live **MCP** interface so AI agents can read the same sweep the operator sees.
 
 ## Quick Navigation
 
+- [MCP for AI agents](mcp.md) — why MCP, tools, stdio proxy, what v1 will not do
 - [Getting Started](getting-started.md)
 - [Building & Running](building.md)
 - [Development Guide](development.md) (including testing and linting)
 - [HackRF Hardware Setup](hackrf-setup.md)
-- [Usage](usage.md) — includes MCP (`make mcp`) for local agents
+- [Usage](usage.md) — operator UI (Quick Select, auto-gain, waterfall)
 - [Architecture](architecture.md)
 - [Repository stats](stats.md) — first-party LOC, packages, tests (`make stats`)
 - [Contributing](contributing.md)
@@ -16,7 +17,7 @@ This directory contains the first-class documentation for the **hackrf-spectrum-
 
 ## Diagrams
 
-This documentation uses [Mermaid](https://mermaid.js.org/) for UML-style diagrams (flowcharts, sequence diagrams, class diagrams, deployment diagrams, etc.). These render natively on GitHub.
+This documentation uses [Mermaid](https://mermaid.js.org/) for UML-style diagrams (flowcharts, sequence diagrams, class diagrams). These render natively on GitHub.
 
 Current diagrams cover:
 - Architecture (high-level, data flow, class, package, build-to-user)

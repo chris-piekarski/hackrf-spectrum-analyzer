@@ -4,11 +4,12 @@
 flowchart LR
     A[Clone + make help] --> B[Install deps + udev/firmware]
     B --> C[make build]
-    C --> D[make start]
-    D --> E[Plug in the radio<br/>watch the spectrum]
+    C --> D[make mcp]
+    D --> E[Operator: spectrum + waterfall]
+    D --> F[Agent: MCP tools on :8765]
 ```
 
-Turn a HackRF into a live spectrum and waterfall display.
+Turn a HackRF into a live spectrum analyzer **and** an MCP endpoint for local AI agents. You watch the waterfall. The agent queries the same bins.
 
 ## What you need
 
@@ -28,7 +29,7 @@ From the repository root:
 make help          # every target, with descriptions
 make info          # confirm the radio, firmware, and SDK pin
 make udev          # Linux once: persistent USB permissions
-make start         # build if needed, then launch
+make mcp           # build if needed, launch GUI + MCP on 127.0.0.1:8765
 ```
 
 The sidebar shows the board name, short serial, and firmware when the radio opens. Hover that line for the full serial and USB API.
@@ -40,13 +41,15 @@ The sidebar shows the board name, short serial, and firmware when the radio open
 
 ## First run
 
-- Plug the radio in before you click around. The sweep starts on its own.
+- Plug the radio in before you click around. The sweep starts on its own. **Auto gain** and **auto-scale dB** are on by default.
 - **Quick Select** jumps to common bands (Wi‑Fi, LTE, FM, amateur 2 m / 70 cm, …). Hover a button for the MHz range. Details: [usage.md](usage.md).
 - **Antenna LNA +14 dB** turns on the amplifier on the radio. Use it when the signal is weak; skip it on strong local transmitters.
 - Changing start/end frequency, gain, or FFT bin retunes automatically.
+- Attach an agent with the stdio proxy — **[MCP for AI agents](mcp.md)**.
 
 ## Next
 
+- [MCP for AI agents](mcp.md) — tools, client config, read-only v1
 - [Usage](usage.md) — buttons, gain, and the status line
 - [Radio setup](hackrf-setup.md) — firmware, udev, Zadig
 - [Development](development.md) — if you are changing the code

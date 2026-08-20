@@ -1,19 +1,21 @@
 # Architecture
 
+This is a desktop HackRF analyzer whose **MCP server lives in the same JVM as the GUI**. Agents talk to `jspectrumanalyzer.mcp`; they never open USB. Operator UI and agent tools share `SpectrumSweepEngine` + `SpectrumSnapshotStore`. Product-facing MCP notes: [mcp.md](mcp.md).
+
 ## High-Level Overview
 
 ```mermaid
 flowchart TD
     subgraph JavaApp["Java Application (Swing)"]
         UI["UI Layer<br/>Waterfall, Charts, Settings, Quick Select"]
-        Core["Core DSP Layer<br/>SpurFilter, PersistentDisplay,<br/>DatasetSpectrum*, EMA, Allocations"]
-        MCP["MCP snapshot store"]
+        Core["Core DSP Layer<br/>SpurFilter, PersistentDisplay,<br/>DatasetSpectrum*, AutoGain,<br/>EMA, Allocations"]
+        MCP["MCP package<br/>snapshot store + JSON-RPC"]
     end
 
     NativeBridge["Native Bridge (JNA)"]
     NativeLib["Native sweep library<br/>(libhackrf-sweep.so / .dll)"]
     HackRF["libhackrf + USB (libusb)"]
-    Agent["Local MCP client"]
+    Agent["Local MCP client<br/>stdio proxy or TCP 8765"]
 
     UI --> Core
     MCP --> Core
@@ -27,8 +29,10 @@ flowchart TD
 
 ### Core DSP (`jspectrumanalyzer/core/`)
 - `DatasetSpectrum`, `DatasetSpectrumPeak`
-- `SpectrumSweepEngine`, `SpurFilter`, `PersistentDisplay`
+- `SpectrumSweepEngine`, `SpurFilter`, `PersistentDisplay`, `SpectrumPowerScale`
 - `AnalyzerSettings` (all `HackRFSettings` model values; radio vs display)
+- `AutoGainPolicy` (LNA then VGA; display policy, writes radio gain)
+- `FrequencyRange.forInterleavedNativeSweep()` (±10 MHz pad so FM 88–108 is filled)
 - `FrequencyAxis`, `BandMark`, `WifiBandLayer`, `FmBandLayer` (plot overlays do not invent their own MHz↔pixel map)
 - `EMA`, `FFTBins`, `PowerCalibration`, `RadioIdentity`
 - Frequency allocation tables
@@ -42,7 +46,11 @@ These are the best candidates for unit testing (and have the majority of our tes
 
 ### UI Layer
 - Swing + FlatLaf + JFreeChart.
-- `WaterfallPlot`, `HackRFSweepSettingsUI`, Quick Select (`QuickSelectPreset`), `SweepStatusBar`, radio identity (board / serial / firmware). Spectrum overlays share `FrequencyAxis` + `BandHeaderPainter`: Wi-Fi (`WifiBandLayer`), live US FM (`FmBandLayer` + `FmStationTracker`), and zoomed-out Quick Select (`QuickSelectBandLayer`). Frequency zoom (`SpectrumZoom` + `SpectrumZoomHistory`) retunes the sweep like a Grafana time-range drag.
+- `WaterfallPlot` + `WaterfallTimeScale` (left gutter, newest at the top). Palette follows the live dB window when auto-scale is on. History is kept across gain-only USB restarts (`DatasetSpectrum.sameAxisAs`).
+- `HackRFSweepSettingsUI`, Quick Select (`QuickSelectPreset`), `SweepStatusBar`, radio identity (board / serial / firmware). Spectrum overlays share `FrequencyAxis` + `BandHeaderPainter`: Wi-Fi (`WifiBandLayer`), live US FM (`FmBandLayer` + `FmStationTracker`), and zoomed-out Quick Select (`QuickSelectBandLayer`). Frequency zoom (`SpectrumZoom` + `SpectrumZoomHistory`) retunes the sweep like a Grafana time-range drag.
+
+### MCP (`jspectrumanalyzer/mcp/`)
+Read-only Model Context Protocol on the **same JVM** as the GUI (no second USB open). `SweepUiHooks.onFullSweepProcessed` copies filled bins into `SpectrumSnapshotStore` at ≤10 Hz. `SpectrumMcpServer` speaks JSON-RPC (`Content-Length` or one object per line) on stdio or `127.0.0.1:8765` (`--mcp` / `make mcp`). Tools: `spectrum_summary`, `spectrum_snapshot`, `radio_identity`, `sweep_config` (radio vs display, including `autoGain`), `fm_stations`. Hop holes are omitted. Stdio clients use `scripts/mcp-spectrum-proxy.py`.
 
 ### Build System
 - Root `Makefile` — convenience targets (`make help`, `make test`, `make start`, etc.).
@@ -65,14 +73,16 @@ sequenceDiagram
     participant Engine as SpectrumSweepEngine
     participant DSP as Core DSP
     participant UI as Charts and waterfall
-    participant MCP as MCP snapshot store
+    participant Store as SpectrumSnapshotStore
+    participant MCP as MCP server :8765
 
     Native->>Bridge: FFT power batches
     Bridge->>Analyzer: newSpectrumData
     Analyzer->>Engine: accept bins
     Engine->>DSP: filter peaks persist
     Engine->>UI: hooks update displays
-    Engine->>MCP: snapshot store copy
+    Engine->>Store: immutable snapshot copy
+    MCP->>Store: tools/call (read-only)
 ```
 
 ## Testing Strategy
@@ -119,6 +129,11 @@ classDiagram
     }
     class FrequencyBand
     class FFTBins
+    class AutoGainPolicy {
+        +seedGain()
+        +decide()
+        +consider()
+    }
     class SpectrumSweepEngine {
         +accept()
         +runProcessingLoop()
@@ -137,6 +152,7 @@ classDiagram
     FrequencyAllocationTable --> FrequencyBand
     SpectrumSweepEngine --> DatasetSpectrumPeak
     SpectrumSweepEngine --> SpurFilter
+    AutoGainPolicy --> DatasetSpectrum
 ```
 
 ## Deployment Diagram
@@ -157,11 +173,13 @@ flowchart TD
 ```mermaid
 flowchart LR
     UI["jspectrumanalyzer.ui<br/>settings, waterfall, Quick Select"]
-    Core["jspectrumanalyzer.core<br/>engine, DSP, RadioIdentity"]
+    Core["jspectrumanalyzer.core<br/>engine, DSP, AutoGain, RadioIdentity"]
+    MCP["jspectrumanalyzer.mcp<br/>snapshot store + JSON-RPC"]
     Bridge["jspectrumanalyzer.nativebridge<br/>JNA + device query"]
     Native["libhackrf-sweep"]
     UI --> Core
     UI --> Bridge
+    MCP --> Core
     Core --> Bridge
     Bridge --> Native
 ```
