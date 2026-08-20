@@ -22,14 +22,15 @@ class AutoGainPolicyTest {
 
 	@Test
 	void clipDropsGainImmediately() {
-		assertEquals(24, AutoGainPolicy.decide(40, -1f, -1f, -50f));
-		assertEquals(32, AutoGainPolicy.decide(40, -6f, -6f, -50f));
+		assertEquals(32, AutoGainPolicy.decide(40, -1f, -1f, -50f));
+		assertEquals(40, AutoGainPolicy.decide(40, -6f, -6f, -50f),
+				"a single −6 dBm Wi-Fi bin is not hard clip");
 	}
 
 	@Test
 	void weakPeakRaisesTowardTheHoldWindow() {
 		int next = AutoGainPolicy.decide(32, -70f, -70f, -85f);
-		assertTrue(next >= 48, "a −70 dBm peak at 32 dB gain should jump toward the target");
+		assertTrue(next >= 40, "a −70 dBm peak at 32 dB gain should step toward the target");
 		assertEquals(32, AutoGainPolicy.decide(32, -30f, -30f, -70f), "already in the hold window");
 	}
 
@@ -43,6 +44,14 @@ class AutoGainPolicyTest {
 	void afterRaiseBacksOffWhenThePeakDidNotFollow() {
 		assertEquals(48, AutoGainPolicy.afterRaise(56, 16, 3f));
 		assertEquals(56, AutoGainPolicy.afterRaise(56, 16, 15f));
+		assertEquals(56, AutoGainPolicy.afterRaise(56, 16, -20f),
+				"a disappeared burst is not compression");
+	}
+
+	@Test
+	void rememberedBurstDoesNotDropGain() {
+		assertEquals(40, AutoGainPolicy.decide(40, -35f, -10f, -70f),
+				"peak-hold of a Wi-Fi packet must not yank gain down");
 	}
 
 	@Test
@@ -78,7 +87,10 @@ class AutoGainPolicyTest {
 		loop.seedIfBandShifted(2402, 2472, 40);
 		loop.markSettling(5_000L);
 		DatasetSpectrum ds = fmLike(-1f, -40f);
-		Integer next = loop.consider(AutoGainPolicy.observe(ds, 40, 2402, 2472), 5_100L);
+		assertNull(loop.consider(AutoGainPolicy.observe(ds, 40, 2402, 2472), 5_100L),
+				"one hard-clip frame must not restart USB");
+		assertNull(loop.consider(AutoGainPolicy.observe(ds, 40, 2402, 2472), 5_130L));
+		Integer next = loop.consider(AutoGainPolicy.observe(ds, 40, 2402, 2472), 5_160L);
 		assertNotNull(next);
 		assertTrue(next.intValue() < 40);
 	}
@@ -97,6 +109,27 @@ class AutoGainPolicyTest {
 	}
 
 	@Test
+	void wifiLoudQuietLoudDoesNotOscillateAroundTheSeed() {
+		AutoGainPolicy.Loop loop = new AutoGainPolicy.Loop();
+		assertEquals(32, loop.seedIfBandShifted(2402, 2472, 40));
+		loop.markSettling(0);
+		Integer up = loop.consider(AutoGainPolicy.observe(fmLike(-70f, -85f), 32, 2402, 2472),
+				AutoGainPolicy.SETTLE_MS + 10);
+		assertNotNull(up);
+		assertTrue(up.intValue() > 32);
+		loop.markSettling(AutoGainPolicy.SETTLE_MS + 10);
+		long t = AutoGainPolicy.SETTLE_MS + 10 + AutoGainPolicy.SETTLE_MS + 20;
+		Integer afterQuiet = loop.consider(AutoGainPolicy.observe(fmLike(-75f, -88f), up.intValue(), 2402, 2472), t);
+		assertTrue(afterQuiet == null || afterQuiet.intValue() >= up.intValue(),
+				"quiet after a raise must not reverse toward the seed");
+		int held = afterQuiet == null ? up.intValue() : afterQuiet.intValue();
+		if (afterQuiet != null)
+			loop.markSettling(t);
+		assertNull(loop.consider(AutoGainPolicy.observe(fmLike(-28f, -80f), held, 2402, 2472),
+				t + AutoGainPolicy.SETTLE_MS + 20), "a normal Wi-Fi packet after the raise must hold");
+	}
+
+	@Test
 	void smallZoomDoesNotReseed() {
 		AutoGainPolicy.Loop loop = new AutoGainPolicy.Loop();
 		assertEquals(48, loop.seedIfBandShifted(88, 108, 32));
@@ -105,7 +138,7 @@ class AutoGainPolicyTest {
 
 	@Test
 	void peakHoldDecaysTowardTheLivePeak() {
-		float hold = AutoGainPolicy.decayPeakHold(-20f, -80f, 1.5);
+		float hold = AutoGainPolicy.decayPeakHold(-20f, -80f, AutoGainPolicy.PEAK_HOLD_HALF_LIFE_SEC);
 		assertEquals(-50f, hold, 1f);
 		assertEquals(-10f, AutoGainPolicy.decayPeakHold(-20f, -10f, 1.0), 0.01f);
 	}

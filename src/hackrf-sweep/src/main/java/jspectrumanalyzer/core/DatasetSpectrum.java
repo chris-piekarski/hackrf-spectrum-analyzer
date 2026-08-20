@@ -215,6 +215,15 @@ public class DatasetSpectrum implements Cloneable
 		return freqStopMHz;
 	}
 
+	/** Same MHz span and bin size — a gain-only restart must not wipe the waterfall. */
+	public boolean sameAxisAs(DatasetSpectrum other)
+	{
+		if (other == null)
+			return false;
+		return freqStartMHz == other.freqStartMHz && freqStopMHz == other.freqStopMHz
+				&& fftBinSizeHz == other.fftBinSizeHz;
+	}
+
 	/**
 	 * Translates index of spectrum to frequency in Hz
 	 * @param index

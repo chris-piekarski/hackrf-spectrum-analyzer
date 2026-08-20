@@ -79,6 +79,16 @@ class DatasetSpectrumTest {
     }
 
     @Test
+    void sameAxisIgnoresObjectIdentity() {
+        DatasetSpectrum a = new DatasetSpectrum(100000f, 2402, 2472, -150f);
+        DatasetSpectrum b = new DatasetSpectrum(100000f, 2402, 2472, -150f);
+        DatasetSpectrum c = new DatasetSpectrum(100000f, 88, 108, -150f);
+        assertTrue(a.sameAxisAs(b));
+        assertFalse(a.sameAxisAs(c));
+        assertFalse(a.sameAxisAs(null));
+    }
+
+    @Test
     void testCopyTo() {
         DatasetSpectrum src = new DatasetSpectrum(100000f, 2400, 2401, -100f);
         src.getSpectrumArray()[0] = -50f;

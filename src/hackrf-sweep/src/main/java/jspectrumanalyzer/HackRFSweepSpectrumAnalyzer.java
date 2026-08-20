@@ -689,9 +689,9 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 		@Override
 		public void onFullSweepProcessed(DatasetSpectrumPeak ds) {
-			boolean retuned = datasetSpectrum != ds;
+			boolean axisChanged = datasetSpectrum == null || !datasetSpectrum.sameAxisAs(ds);
 			datasetSpectrum = ds;
-			if (retuned) {
+			if (axisChanged) {
 				fmTracker.reset();
 				powerScale = null;
 				if (waterfallPlot != null)
@@ -1412,17 +1412,6 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				if (settings.isPersistentDisplayVisible().getValue())
 					chart.getXYPlot().setBackgroundImage(image);
 			});
-		});
-
-		registerListener(new HackRFEventAdapter() {
-			@Override
-			public void hardwareStatusChanged(boolean hardwareSendingData) {
-				SwingUtilities.invokeLater(() -> {
-					if (hardwareSendingData && settings.isPersistentDisplayVisible().getValue()) {
-						resetPersistentImage.run();
-					}
-				});
-			}
 		});
 
 		settings.isPersistentDisplayVisible().addListener((display) -> {

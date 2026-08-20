@@ -17,9 +17,13 @@ public final class AutoGainPolicy
 	/** Instant peak at or above this is treated as ADC clip. */
 	public static final float CLIP_DBM = -8f;
 	public static final float HARD_CLIP_DBM = -2f;
-	public static final long SETTLE_MS = 750L;
+	public static final long SETTLE_MS = 2500L;
+	/** Consecutive ~30 fps frames of sustained hot before easing down (not a Wi-Fi flash). */
+	public static final int SUSTAINED_HOT_FRAMES = 12;
+	/** Consecutive frames at {@link #HARD_CLIP_DBM} before dropping during settle. */
+	public static final int HARD_CLIP_FRAMES = 3;
 	/** Peak-hold half-life so a Wi-Fi packet is remembered through a quiet gap. */
-	public static final double PEAK_HOLD_HALF_LIFE_SEC = 1.5;
+	public static final double PEAK_HOLD_HALF_LIFE_SEC = 4.0;
 	public static final int MIN_FILLED_BINS = 8;
 	/** Mid-frequency jump that counts as a new Quick Select / band. */
 	public static final int BAND_SHIFT_MHZ = 40;
@@ -103,8 +107,9 @@ public final class AutoGainPolicy
 	}
 
 	/**
-	 * One-shot gain step. {@code peakHold} is the burst-aware estimate used
-	 * for “too quiet / too hot”; {@code peakNow} trips clip immediately.
+	 * One-shot gain step. {@code peakHold} (burst memory) only blocks a
+	 * raise. Lowering uses {@code peakNow}: clip immediately, otherwise
+	 * stay. A remembered Wi-Fi packet must not yank gain back down.
 	 */
 	public static int decide(int currentGain, float peakNow, float peakHold, float noiseDbm)
 	{
@@ -112,25 +117,22 @@ public final class AutoGainPolicy
 		if (!Float.isFinite(peakNow))
 			return gain;
 		if (peakNow >= HARD_CLIP_DBM)
-			return GainPolicy.clampTotal(gain - 16);
-		if (peakNow >= CLIP_DBM)
 			return GainPolicy.clampTotal(gain - 8);
-		float hot = Float.isFinite(peakHold) ? Math.max(peakNow, peakHold) : peakNow;
-		if (hot > HOLD_HIGH_DBM)
-			return GainPolicy.clampTotal(gain - stepForError(hot - TARGET_PEAK_DBM));
-		if (hot < HOLD_LOW_DBM)
-			return GainPolicy.clampTotal(gain + stepForError(TARGET_PEAK_DBM - hot));
+		float quiet = Float.isFinite(peakHold) ? peakHold : peakNow;
+		if (quiet < HOLD_LOW_DBM)
+			return GainPolicy.clampTotal(gain + Math.min(8, stepForError(TARGET_PEAK_DBM - quiet)));
 		return gain;
 	}
 
 	/**
-	 * After a raise, if the peak barely moved we are compressing — back off.
-	 * A disappeared burst (peak dropped) is not compression.
+	 * After a raise, if the peak rose far less than the gain we added we
+	 * are compressing — back off. A peak that dropped (burst gone) is not
+	 * compression and must not reverse the raise.
 	 */
 	public static int afterRaise(int currentGain, int dGain, float dPeak)
 	{
 		int gain = GainPolicy.clampTotal(currentGain);
-		if (dGain < 8 || !Float.isFinite(dPeak))
+		if (dGain < 8 || !Float.isFinite(dPeak) || dPeak < 0f)
 			return gain;
 		if (dPeak < dGain * 0.4f)
 			return GainPolicy.clampTotal(gain - Math.max(8, dGain / 2));
@@ -172,10 +174,10 @@ public final class AutoGainPolicy
 		int lastEndMHz = Integer.MIN_VALUE;
 		long settleUntilMs;
 		int lastAppliedGain = -1;
-		int raiseFromGain = -1;
-		float peakBeforeRaise = Float.NaN;
 		float peakHold = Float.NaN;
 		long lastHoldMs;
+		int hotFrames;
+		int hardClipFrames;
 
 		public void reset()
 		{
@@ -183,10 +185,10 @@ public final class AutoGainPolicy
 			lastEndMHz = Integer.MIN_VALUE;
 			settleUntilMs = 0;
 			lastAppliedGain = -1;
-			raiseFromGain = -1;
-			peakBeforeRaise = Float.NaN;
 			peakHold = Float.NaN;
 			lastHoldMs = 0;
+			hotFrames = 0;
+			hardClipFrames = 0;
 		}
 
 		public void markSettling(long nowMs)
@@ -206,9 +208,9 @@ public final class AutoGainPolicy
 			lastEndMHz = endMHz;
 			int seed = seedGain(startMHz, endMHz);
 			lastAppliedGain = seed;
-			raiseFromGain = -1;
-			peakBeforeRaise = Float.NaN;
 			peakHold = Float.NaN;
+			hotFrames = 0;
+			hardClipFrames = 0;
 			if (seed != GainPolicy.clampTotal(currentGain))
 				return Integer.valueOf(seed);
 			return null;
@@ -231,32 +233,27 @@ public final class AutoGainPolicy
 			peakHold = decayPeakHold(peakHold, o.peakDbm, dt);
 			lastHoldMs = nowMs;
 
-			boolean clipping = o.peakDbm >= CLIP_DBM;
-			if (!clipping && nowMs < settleUntilMs)
+			if (o.peakDbm >= HARD_CLIP_DBM)
+				hardClipFrames++;
+			else
+				hardClipFrames = 0;
+			boolean hardClip = hardClipFrames >= HARD_CLIP_FRAMES;
+			if (!hardClip && nowMs < settleUntilMs)
 				return null;
 
 			int gain = GainPolicy.clampTotal(o.currentGain);
-			if (raiseFromGain >= 0)
-			{
-				int dG = gain - raiseFromGain;
-				int backed = afterRaise(gain, dG, o.peakDbm - peakBeforeRaise);
-				raiseFromGain = -1;
-				peakBeforeRaise = Float.NaN;
-				if (backed != gain)
-				{
-					lastAppliedGain = backed;
-					return Integer.valueOf(backed);
-				}
-			}
+			if (o.peakDbm > HOLD_HIGH_DBM && o.peakDbm < HARD_CLIP_DBM)
+				hotFrames++;
+			else if (o.peakDbm <= HOLD_HIGH_DBM)
+				hotFrames = 0;
 
 			int next = decide(gain, o.peakDbm, peakHold, o.noiseDbm);
+			if (next >= gain && hotFrames >= SUSTAINED_HOT_FRAMES)
+				next = GainPolicy.clampTotal(gain - 8);
 			if (next == gain)
 				return null;
-			if (next > gain)
-			{
-				raiseFromGain = gain;
-				peakBeforeRaise = o.peakDbm;
-			}
+			hotFrames = 0;
+			hardClipFrames = 0;
 			lastAppliedGain = next;
 			return Integer.valueOf(next);
 		}
