@@ -90,7 +90,7 @@ Root-level files:
 - `CONTRIBUTING.md` — Contribution guidelines
 - `LICENSE`
 
-**Never edit the old `Readme.md` or `src/hackrf-sweep/Readme.md` directly** — content has been migrated to the `docs/` structure and root `README.md`.
+The only project overview file is root `README.md`. Do **not** recreate `Readme.md` (Git/Linux treat that as a second file). First-class docs live under `docs/`.
 
 ## Development Workflow
 
@@ -109,7 +109,7 @@ Root-level files:
 - Operator settings live in `AnalyzerSettings` (implements `HackRFSettings`). Do not add new `ModelValue` fields on the analyzer JFrame. Mark radio vs display via `isRadioSetting`. Auto gain is display policy; the LNA/VGA values it writes are radio settings.
 - Plot overlays go through `FrequencyAxis` + `BandMark` + `BandHeaderPainter`. Do not invent a second MHz↔pixel map.
 - Native interleaved hops export 5 MHz slices with holes. Pad USB start/stop with `FrequencyRange.forInterleavedNativeSweep()` (±10 MHz) so the requested window (e.g. FM 88–108) is actually filled. Dataset/axis stay on the operator range.
-- Live agent access is `jspectrumanalyzer.mcp` (`SpectrumSnapshotStore` from `onFullSweepProcessed`, `SpectrumMcpServer` JSON-RPC). Tools are read-only (`spectrum_summary`, `spectrum_snapshot`, `radio_identity`, `sweep_config`, `fm_stations`); do not restart USB from a snapshot tool. Start with `--mcp` / `make mcp` (localhost 8765). Stdio shim: `scripts/mcp-spectrum-proxy.py`.
+- Live agent access is `jspectrumanalyzer.mcp` (`SpectrumSnapshotStore` from `onFullSweepProcessed`, `SpectrumMcpServer` JSON-RPC). Tools are read-only (`spectrum_summary`, `spectrum_snapshot`, `radio_identity`, `sweep_config`, `fm_stations`, `spectrum_occupancy`, `spectrum_history`); occupancy is `SpectrumOccupancy` on filled bins, not a new USB path. Do not restart USB from a snapshot tool. Start with `--mcp` / `make mcp` (localhost 8765). Stdio shim: `scripts/mcp-spectrum-proxy.py`.
 - Auto-gain (`AutoGainPolicy`) must not pump: one Wi-Fi packet is not clip; a disappeared burst is not compression; settle after each apply; do not `clearHistory()` on a gain-only restart (`DatasetSpectrum.sameAxisAs`).
 - UI changes should be accompanied by updates to `docs/usage.md`.
 - New Makefile targets must be added to both the root `Makefile` and the detailed `src/hackrf-sweep/Makefile`, with proper `##` descriptions for `make help`.

@@ -85,7 +85,7 @@ For the native C parts, a clang-format command is commented in the Makefile.
 - All user/developer documentation lives under `docs/`.
 - Keep `docs/` in sync with `make help` output.
 - The root `README.md` and `AGENTS.md` should be updated when processes change significantly.
-- Do **not** edit the legacy `Readme.md` files — they are being phased toward the `docs/` structure.
+- The overview file is root `README.md` only. Do not add a second `Readme.md` (case-sensitive filesystems keep both).
 
 ## Architecture Notes
 
