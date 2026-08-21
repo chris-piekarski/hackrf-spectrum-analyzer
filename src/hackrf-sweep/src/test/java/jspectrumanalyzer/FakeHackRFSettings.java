@@ -143,6 +143,11 @@ public class FakeHackRFSettings implements HackRFSettings {
 	}
 
 	@Override
+	public ModelValue<jspectrumanalyzer.core.McpStatus> getMcpStatus() {
+		return inner.getMcpStatus();
+	}
+
+	@Override
 	public ModelValue<String> getSelectedSerial() {
 		return inner.getSelectedSerial();
 	}

@@ -43,6 +43,8 @@ Point a local MCP client at the stdio proxy (the GUI must already be listening):
 
 Tools: `spectrum_summary`, `spectrum_snapshot` (optional `maxPoints`, `minDbm`), `radio_identity`, `sweep_config` (radio vs display, including `autoScale` and `autoGain`), `fm_stations`, `spectrum_occupancy`, `spectrum_history` (summaries, optional `seconds` / `maxSamples`). Unfilled hop holes are omitted, not reported as −150 dBm. Snapshots are sampled at most 10 times per second. Agents cannot change frequency or gain in v1. The GUI must already hold the radio; MCP does not open a second USB device.
 
+The sidebar **MCP** line (and the status-bar `MCP` field) show whether this process is listening (`127.0.0.1:8765`), how many clients are connected, their `initialize` names, and the last tool they called. **MCP off** means the GUI was started without `--mcp` — use `make mcp`. **MCP failed** means the port is already taken.
+
 ## What you are looking at
 
 ```mermaid
@@ -58,8 +60,8 @@ flowchart LR
 
 - **Spectrum** — power vs frequency for the current sweep. **Auto gain** (default) sets LNA then VGA so the live peak sits near −28 dBm for this Quick Select. The **dB axis auto-scales** the live band (10 dB pad, 10 dB ticks). Turn **Auto-scale dB axis** off under Chart options for a fixed **−100…+20** window. When auto-scale is on, the **waterfall palette** uses the same window so FM/Wi-Fi peaks are not crushed into the blue end of a fixed −90…−25 scale. Auto-scale holds through wobble and bursty peaks, opens a tick only if a signal would clip, and shrinks at most one 10 dB tick every few seconds if that whole stretch stayed quiet. **Drag horizontally** on the plot to zoom that frequency span (the radio retunes; the sweep-range readout follows). **Double-click** or **scroll down** to zoom out one step; **scroll up** zooms in around the cursor. The axis updates immediately; the radio waits ~120 ms after the last zoom/Quick Select so a wheel flick is one retune, and the last sweep stays on screen until the new window’s first full sweep arrives. Quick Select clears the zoom stack. When the view is **wider than a single Quick Select button**, those presets are drawn as labeled vertical bands (FM, WiFi 2, LTE-1, 2m, …). Names sit in the **top header**, same as Wi-Fi / FM channel labels. ITU survey envelopes (HF/VHF/UHF) are lighter. A band that fills the plot is omitted so it does not cover the whole screen. Wi-Fi overlay marks the **occupied 20 MHz** of each US channel (ch N starts at center−10 MHz). On 2.4 GHz those slices overlap every 5 MHz (ch 1 is 2402–2422, ch 2 is 2407–2427, ch 11 is 2452–2472). On 5 GHz the 20 MHz channels do not overlap. The empty stretch after channel 64 is U-NII-2B (5350–5470, weather radar) plus unused 5330–5490, not a wide channel. 1 / 6 / 11 and 36 / 48 / 149 / 165 are brighter. The radio’s 20 MHz interleaved hop is padded ±10 MHz under the requested window so FM 88–108 is actually filled (otherwise 97.3 sits in a 93–98 MHz hole). On **FM**, only stations seen in the live sweep are marked — and only when the view is zoomed to that band (about 30 MHz or less), so a wide survey does not fill the header with unreadable 97.3 tags. Each peak is snapped to the US 200 kHz dial (47 CFR 73.201) and labeled like **97.3**. Confidence rises over a few tenths of a second of repeated hits and decays over about two seconds after the peak drops, so a one-sweep flash is not labeled. Empty channels stay unlabeled. Use a finer FFT bin (100 kHz or less) so adjacent odd-tenths separate.
 - **Waterfall** — the same RF range over time (newest at the top), labeled **RF waterfall** on the panel and in the status bar. A **time scale** on the left marks **now**, then 1s / 2s / 5s / … down the history. Hover a row for MHz and age. In **Listen** the panel switches to **AUDIO · 0–16 kHz** (gold badge; peak in dBFS). Pause freezes both the raster and the ages. History is kept when only LNA/VGA change; a Quick Select or zoom that moves the MHz window still clears it.
-- **Status bar** — resolution, FFT bin count, waterfall rate, peak power
-- **Sidebar** — Quick Select bands, one **sweep range** readout (type `88-108`, pan ◀▶, zoom −/+), radio identity, FM tuner, Pause, then gain and display options
+- **Status bar** — resolution, FFT bin count, waterfall rate, peak power, MCP bind/clients
+- **Sidebar** — Quick Select bands, one **sweep range** readout (type `88-108`, pan ◀▶, zoom −/+), radio identity, **MCP** (bind and connected agents), FM tuner, Pause, then gain and display options
 
 The sweep retunes whenever you change a setting.
 
@@ -74,6 +76,17 @@ The line above **Pause** is the attached unit, not a boolean “connected” fla
 | `FW …` | Firmware version |
 
 Hover it for the full serial, USB API, and whether a sweep is running.
+
+The **MCP** block under the radio identity is this process’s agent endpoint, not USB:
+
+| Line | Meaning |
+|---|---|
+| `MCP  127.0.0.1:8765` | Listening (TCP). `stdio` if `--mcp-stdio`. |
+| `idle · no clients` | Bound, nothing connected yet. Point the stdio proxy at this port. |
+| `claude-code` / `2 clients` | Connected MCP client(s), named from `initialize.clientInfo`. |
+| `last spectrum_summary` | Most recent tool call. |
+| `MCP  off` | Started without `--mcp`. |
+| `MCP  failed` | Bind error (port in use). |
 
 **Pause** freezes the plot. The radio keeps sweeping; **Resume** shows live data again. It does not reset USB.
 

@@ -62,4 +62,6 @@ Run the proxy from the repo root (or pass an absolute path to the script).
 - **Safe for agents.** JSON-RPC on localhost / stdio. No LAN listen in v1. No USB restart from a snapshot tool.
 - **Operator-first defaults.** Auto gain, auto-scale dB, and a waterfall time axis so humans and agents see a usable band.
 
-Implementation: `jspectrumanalyzer.mcp` (`SpectrumSnapshotStore`, `SpectrumMcpServer`, `SpectrumMcpTools`). Design notes: [architecture.md](architecture.md). Operator UI: [usage.md](usage.md).
+The operator sidebar (and the status-bar **MCP** field) shows bind address, connected clients (`initialize.clientInfo.name`), and the last tool call. **MCP off** means this process was started without `--mcp`.
+
+Implementation: `jspectrumanalyzer.mcp` (`SpectrumSnapshotStore`, `SpectrumMcpServer`, `SpectrumMcpTools`) plus `McpStatus` for the UI. Design notes: [architecture.md](architecture.md). Operator UI: [usage.md](usage.md).

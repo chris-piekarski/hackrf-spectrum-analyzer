@@ -32,6 +32,7 @@ import jspectrumanalyzer.core.FrequencyAllocations;
 import jspectrumanalyzer.core.FrequencyRange;
 import jspectrumanalyzer.core.HackRFSettings;
 import jspectrumanalyzer.core.HackRFSettings.HackRFEventAdapter;
+import jspectrumanalyzer.core.McpStatus;
 import jspectrumanalyzer.core.RadioIdentity;
 import net.miginfocom.swing.MigLayout;
 import shared.mvc.MVCController;
@@ -49,6 +50,7 @@ public class HackRFSweepSettingsUI extends JPanel
 	private HackRFSettings hRF;
 	private static final long serialVersionUID = 7721079457485020637L;
 	private JLabel txtHackrfConnected;
+	private JLabel txtMcpStatus;
 	private boolean radioSweeping;
 	private boolean syncingRadioCombo;
 	private FrequencyRangePanel frequencyRangePanel;
@@ -126,6 +128,12 @@ public class HackRFSweepSettingsUI extends JPanel
 		txtHackrfConnected.setVerticalAlignment(SwingConstants.TOP);
 		txtHackrfConnected.setBorder(null);
 
+		txtMcpStatus = new JLabel();
+		txtMcpStatus.setText(McpStatus.OFF.statusHtml());
+		txtMcpStatus.setToolTipText(McpStatus.OFF.tooltip(System.currentTimeMillis()));
+		txtMcpStatus.setVerticalAlignment(SwingConstants.TOP);
+		txtMcpStatus.setBorder(null);
+
 		comboRadio = new JComboBox<>(new String[] { FIRST_RADIO });
 		comboRadio.setToolTipText("Which HackRF to open. First radio = libhackrf default.");
 
@@ -143,6 +151,7 @@ public class HackRFSweepSettingsUI extends JPanel
 		stationKnob = tunerPanel.knob();
 		sliderVolume = tunerPanel.volumeSlider();
 		ExclusiveToolTip.install(txtHackrfConnected);
+		ExclusiveToolTip.install(txtMcpStatus);
 		ExclusiveToolTip.install(comboRadio);
 		ExclusiveToolTip.install(checkBoxClkout);
 		ExclusiveToolTip.install(btnRestart);
@@ -154,6 +163,7 @@ public class HackRFSweepSettingsUI extends JPanel
 
 		JPanel radioStrip = new JPanel(new MigLayout("insets 0, wrap 1, gapy 4", "[grow,fill]", ""));
 		radioStrip.add(txtHackrfConnected);
+		radioStrip.add(txtMcpStatus);
 		radioStrip.add(comboRadio);
 		radioStrip.add(checkBoxClkout);
 		radioStrip.add(radioButtons);
@@ -505,6 +515,7 @@ public class HackRFSweepSettingsUI extends JPanel
 		hRF.isPersistentDisplayVisible().callObservers();
 		
 		hRF.getRadioIdentity().addListener(id -> SwingUtilities.invokeLater(this::refreshRadioStatus));
+		hRF.getMcpStatus().addListener(s -> SwingUtilities.invokeLater(this::refreshMcpStatus));
 		hRF.registerListener(new HackRFSettings.HackRFEventAdapter()
 		{
 			@Override public void captureStateChanged(boolean isCapturing)
@@ -518,6 +529,7 @@ public class HackRFSweepSettingsUI extends JPanel
 			}
 		});
 		refreshRadioStatus();
+		refreshMcpStatus();
 		
 	}
 
@@ -527,6 +539,14 @@ public class HackRFSweepSettingsUI extends JPanel
 			id = hRF.getRadioIdentity().getValue();
 		txtHackrfConnected.setText(id.statusHtml());
 		ExclusiveToolTip.setText(txtHackrfConnected, id.tooltip(radioSweeping));
+	}
+
+	private void refreshMcpStatus() {
+		McpStatus mcp = McpStatus.OFF;
+		if (hRF != null && hRF.getMcpStatus() != null && hRF.getMcpStatus().getValue() != null)
+			mcp = hRF.getMcpStatus().getValue();
+		txtMcpStatus.setText(mcp.statusHtml());
+		ExclusiveToolTip.setText(txtMcpStatus, mcp.tooltip(System.currentTimeMillis()));
 	}
 
 	private void refreshRadioCombo() {
@@ -582,6 +602,10 @@ public class HackRFSweepSettingsUI extends JPanel
 
 	JLabel connectedLabel() {
 		return txtHackrfConnected;
+	}
+
+	JLabel mcpStatusLabel() {
+		return txtMcpStatus;
 	}
 
 	FrequencyRangePanel frequencyRangePanel() {

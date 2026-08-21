@@ -35,4 +35,18 @@ class StationKnobTest {
 		knob.setKHz(97300);
 		assertEquals(97300, knob.getKHz());
 	}
+
+	@Test
+	void pointerStaysOnTheFmScaleWhenDetectionsFlicker() {
+		StationKnob knob = new StationKnob();
+		knob.setKHz(97300);
+		knob.setDetents(java.util.List.of(88100, 97300));
+		double a = knob.pointerAngle();
+		knob.setDetents(java.util.List.of(88100, 97300, 101100, 107900));
+		assertEquals(a, knob.pointerAngle(), 1e-9);
+		knob.setDetents(java.util.List.of());
+		assertEquals(a, knob.pointerAngle(), 1e-9);
+		assertTrue(StationKnob.angleForKHz(88100) < a);
+		assertTrue(a < StationKnob.angleForKHz(107900));
+	}
 }

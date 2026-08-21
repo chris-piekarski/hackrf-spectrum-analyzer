@@ -69,6 +69,7 @@ public final class AnalyzerSettings implements HackRFSettings
 	private final ModelValueBoolean capturingPaused = new ModelValueBoolean("Capturing paused", false);
 	private final ModelValue<RadioIdentity> radioIdentity = new ModelValue<RadioIdentity>("Radio",
 			RadioIdentity.ABSENT);
+	private final ModelValue<McpStatus> mcpStatus = new ModelValue<McpStatus>("MCP", McpStatus.OFF);
 	private final ModelValue<String> selectedSerial = new ModelValue<String>("Serial", "");
 	private final ModelValueBoolean clkoutEnable = new ModelValueBoolean("CLKOUT", false);
 	private final ModelValueBoolean radioReleased = new ModelValueBoolean("Radio released", false);
@@ -239,6 +240,12 @@ public final class AnalyzerSettings implements HackRFSettings
 	public ModelValue<RadioIdentity> getRadioIdentity()
 	{
 		return radioIdentity;
+	}
+
+	@Override
+	public ModelValue<McpStatus> getMcpStatus()
+	{
+		return mcpStatus;
 	}
 
 	@Override

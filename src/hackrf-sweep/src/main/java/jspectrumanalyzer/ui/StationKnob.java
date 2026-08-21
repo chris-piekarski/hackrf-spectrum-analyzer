@@ -19,13 +19,16 @@ import javax.swing.JComponent;
 import jspectrumanalyzer.core.FmChannelPlan;
 
 /**
- * Rotary tuner. Clockwise / drag-right / scroll-up is the next higher
- * station. Detents are one digital jump; the pointer snaps to the
- * current station among {@link #setDetents}.
+ * Rotary tuner. The pointer sits on the US FM scale (88.1–107.9), not
+ * on an index among live detections — otherwise the needle jumps every
+ * sweep as stations flicker. Ticks mark detected stations on that scale.
+ * Clockwise / drag-right / scroll-up seeks the next higher station.
  */
 public final class StationKnob extends JComponent
 {
 	public static final double DETENT_RAD = Math.toRadians(22);
+	static final double ARC_START_RAD = Math.toRadians(210);
+	static final double ARC_SPAN_RAD = Math.toRadians(300);
 	private static final Color FACE = new Color(36, 36, 40);
 	private static final Color RIM = new Color(110, 108, 102);
 	private static final Color WELL = new Color(22, 22, 24);
@@ -131,17 +134,38 @@ public final class StationKnob extends JComponent
 
 	public void setDetents(List<Integer> stationKHz)
 	{
-		detents.clear();
+		List<Integer> next = new ArrayList<Integer>();
 		if (stationKHz != null)
 		{
 			for (Integer k : stationKHz)
 			{
-				if (k != null && !detents.contains(k))
-					detents.add(k);
+				if (k != null && !next.contains(k))
+					next.add(k);
 			}
-			detents.sort(Integer::compareTo);
+			next.sort(Integer::compareTo);
 		}
+		if (next.equals(detents))
+			return;
+		detents.clear();
+		detents.addAll(next);
 		repaint();
+	}
+
+	double pointerAngle()
+	{
+		return angleForKHz(kHz);
+	}
+
+	static double angleForKHz(int kHz)
+	{
+		int lo = FmChannelPlan.FIRST_CENTER_KHZ;
+		int hi = FmChannelPlan.LAST_CENTER_KHZ;
+		double t = (kHz - lo) / (double) (hi - lo);
+		if (t < 0)
+			t = 0;
+		if (t > 1)
+			t = 1;
+		return ARC_START_RAD + ARC_SPAN_RAD * t;
 	}
 
 	public void nudge(int direction)
@@ -170,22 +194,22 @@ public final class StationKnob extends JComponent
 			g.fillOval(cx - r - 2, cy - r - 2, (r + 2) * 2, (r + 2) * 2);
 			g.setColor(FACE);
 			g.fillOval(cx - r + 5, cy - r + 5, (r - 5) * 2, (r - 5) * 2);
-			int n = Math.max(1, detents.size());
-			int idx = detentIndex();
 			for (int i = 0; i < detents.size(); i++)
 			{
-				double ang = tickAngle(i, n);
+				int tickKHz = detents.get(i).intValue();
+				double ang = angleForKHz(tickKHz);
 				int inner = r - 16;
 				int outer = r - 6;
 				int x0 = cx + (int) Math.round(Math.cos(ang) * inner);
 				int y0 = cy + (int) Math.round(Math.sin(ang) * inner);
 				int x1 = cx + (int) Math.round(Math.cos(ang) * outer);
 				int y1 = cy + (int) Math.round(Math.sin(ang) * outer);
-				g.setColor(i == idx ? TICK_ON : TICK);
-				g.setStroke(new BasicStroke(i == idx ? 2.4f : 1.2f));
+				boolean on = tickKHz == kHz;
+				g.setColor(on ? TICK_ON : TICK);
+				g.setStroke(new BasicStroke(on ? 2.4f : 1.2f));
 				g.drawLine(x0, y0, x1, y1);
 			}
-			double pang = tickAngle(idx, n);
+			double pang = angleForKHz(kHz);
 			g.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 			g.setColor(POINTER);
 			int px = cx + (int) Math.round(Math.cos(pang) * (r - 18));
@@ -197,33 +221,6 @@ public final class StationKnob extends JComponent
 		{
 			g.dispose();
 		}
-	}
-
-	private int detentIndex()
-	{
-		if (detents.isEmpty())
-			return 0;
-		int best = 0;
-		int bestD = Integer.MAX_VALUE;
-		for (int i = 0; i < detents.size(); i++)
-		{
-			int d = Math.abs(detents.get(i) - kHz);
-			if (d < bestD)
-			{
-				bestD = d;
-				best = i;
-			}
-		}
-		return best;
-	}
-
-	private static double tickAngle(int i, int n)
-	{
-		double start = Math.toRadians(210);
-		double span = Math.toRadians(300);
-		if (n <= 1)
-			return start + span / 2;
-		return start + span * i / (n - 1);
 	}
 
 	private double angle(MouseEvent e)

@@ -23,6 +23,7 @@ class AnalyzerSettingsTest {
 		assertTrue(s.isPersistentDisplayVisible().getValue());
 		assertTrue(s.isWaterfallVisible().getValue());
 		assertEquals(RadioIdentity.ABSENT, s.getRadioIdentity().getValue());
+		assertEquals(McpStatus.OFF, s.getMcpStatus().getValue());
 	}
 
 	@Test

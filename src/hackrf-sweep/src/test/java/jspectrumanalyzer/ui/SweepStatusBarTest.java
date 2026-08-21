@@ -40,4 +40,17 @@ class SweepStatusBarTest {
 		assertTrue(bar.getModeText().contains("AUDIO"));
 		assertTrue(bar.getPeakText().contains("dBFS"));
 	}
+
+	@Test
+	void mcpFieldTracksEndpointAndClients() {
+		SweepStatusBar bar = new SweepStatusBar();
+		assertEquals("MCP  off", bar.getMcpText());
+		bar.setMcp(jspectrumanalyzer.core.McpStatus.listening("127.0.0.1", 8765));
+		assertEquals("MCP  :8765", bar.getMcpText());
+		jspectrumanalyzer.core.McpStatus.Client c = new jspectrumanalyzer.core.McpStatus.Client(
+				"grok", null, "127.0.0.1:1", "spectrum_summary", 0, 0, 1);
+		bar.setMcp(jspectrumanalyzer.core.McpStatus.listening("127.0.0.1", 8765, false,
+				java.util.List.of(c), "spectrum_summary", 0L));
+		assertTrue(bar.getMcpText().contains("1 client"));
+	}
 }

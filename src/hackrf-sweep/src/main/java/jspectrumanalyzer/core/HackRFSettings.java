@@ -63,6 +63,9 @@ public interface HackRFSettings {
 	/** Attached radio board / serial / firmware. {@link RadioIdentity#ABSENT} when none. */
 	public ModelValue<RadioIdentity> getRadioIdentity();
 
+	/** MCP listen state and connected clients. {@link McpStatus#OFF} when not started. */
+	public ModelValue<McpStatus> getMcpStatus();
+
 	/** Empty string = first radio found. */
 	public ModelValue<String> getSelectedSerial();
 

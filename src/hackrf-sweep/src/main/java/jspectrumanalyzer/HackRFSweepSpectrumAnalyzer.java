@@ -346,6 +346,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		settingsScroll.setMinimumSize(new Dimension(260, 200));
 		uiFrame.add(settingsScroll, BorderLayout.EAST);
 		sweepStatusBar = new SweepStatusBar();
+		settings.getMcpStatus().addListener(s -> javax.swing.SwingUtilities.invokeLater(() -> sweepStatusBar.setMcp(s)));
+		sweepStatusBar.setMcp(settings.getMcpStatus().getValue());
 		uiFrame.add(sweepStatusBar, BorderLayout.SOUTH);
 		applyAppIcons(uiFrame);
 		
@@ -464,6 +466,11 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	}
 
 	@Override
+	public ModelValue<jspectrumanalyzer.core.McpStatus> getMcpStatus() {
+		return settings.getMcpStatus();
+	}
+
+	@Override
 	public ModelValue<String> getSelectedSerial() {
 		return settings.getSelectedSerial();
 	}
@@ -484,17 +491,17 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 	public void startMcpTcp(int port) {
 		try {
-			if (mcpServer == null)
-				mcpServer = new jspectrumanalyzer.mcp.SpectrumMcpServer(snapshotStore);
+			ensureMcpServer();
 			mcpServer.startLocalhost(port);
 		} catch (java.io.IOException e) {
 			e.printStackTrace();
+			settings.getMcpStatus().setValue(jspectrumanalyzer.core.McpStatus.bindFailed(
+					jspectrumanalyzer.mcp.SpectrumMcpServer.BIND_HOST, port, e.getMessage()));
 		}
 	}
 
 	public void startMcpStdio() {
-		if (mcpServer == null)
-			mcpServer = new jspectrumanalyzer.mcp.SpectrumMcpServer(snapshotStore);
+		ensureMcpServer();
 		Thread t = new Thread(() -> {
 			try {
 				mcpServer.runStdio();
@@ -504,6 +511,13 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		}, "spectrum-mcp-stdio");
 		t.setDaemon(true);
 		t.start();
+	}
+
+	private void ensureMcpServer() {
+		if (mcpServer != null)
+			return;
+		mcpServer = new jspectrumanalyzer.mcp.SpectrumMcpServer(snapshotStore);
+		mcpServer.addStatusListener(s -> settings.getMcpStatus().setValue(s));
 	}
 
 	@Override

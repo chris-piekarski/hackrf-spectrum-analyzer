@@ -69,6 +69,22 @@ class HackRFSweepSettingsUITest {
     }
 
     @Test
+    void mcpStatusShowsOffThenClients() throws Exception {
+        FakeHackRFSettings settings = new FakeHackRFSettings();
+        HackRFSweepSettingsUI ui = new HackRFSweepSettingsUI(settings);
+        flushEdt();
+        assertTrue(ui.mcpStatusLabel().getText().contains("MCP  off"));
+        jspectrumanalyzer.core.McpStatus.Client c = new jspectrumanalyzer.core.McpStatus.Client(
+                "claude-code", "1", "127.0.0.1:9", "spectrum_summary", 1L, 2L, 3L);
+        settings.getMcpStatus().setValue(jspectrumanalyzer.core.McpStatus.listening(
+                "127.0.0.1", 8765, false, java.util.List.of(c), "spectrum_summary", 2L));
+        flushEdt();
+        assertTrue(ui.mcpStatusLabel().getText().contains("127.0.0.1:8765"));
+        assertTrue(ui.mcpStatusLabel().getText().contains("claude-code"));
+        assertTrue(ui.mcpStatusLabel().getText().contains("spectrum_summary"));
+    }
+
+    @Test
     void hardwareStripRestartStopPickerAndClkout() throws Exception {
         FakeHackRFSettings settings = new FakeHackRFSettings();
         settings.listedSerials.add("aabbccdd");

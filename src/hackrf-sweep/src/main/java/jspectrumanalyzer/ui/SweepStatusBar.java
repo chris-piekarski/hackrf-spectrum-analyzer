@@ -19,6 +19,7 @@ public class SweepStatusBar extends JPanel {
 	private final JLabel bins = field("FFT bins  —");
 	private final JLabel rate = field("Waterfall  —");
 	private final JLabel peak = field("Peak  —");
+	private final JLabel mcp = field("MCP  off");
 
 	public SweepStatusBar() {
 		AnalyzerLookAndFeel.install();
@@ -34,6 +35,12 @@ public class SweepStatusBar extends JPanel {
 		add(rate);
 		add(sep());
 		add(peak);
+		add(sep());
+		add(mcp);
+	}
+
+	public void setMcp(jspectrumanalyzer.core.McpStatus status) {
+		mcp.setText(status == null ? jspectrumanalyzer.core.McpStatus.OFF.barText() : status.barText());
 	}
 
 	public void setSweepInfo(double rbwHz, int fftBins, double waterfallFps, Double peakDbm) {
@@ -88,6 +95,10 @@ public class SweepStatusBar extends JPanel {
 
 	String getPeakText() {
 		return peak.getText();
+	}
+
+	String getMcpText() {
+		return mcp.getText();
 	}
 
 	private static JLabel field(String text) {
