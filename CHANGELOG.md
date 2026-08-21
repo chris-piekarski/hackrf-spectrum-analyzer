@@ -8,10 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Listen**: park the HackRF on a US FM dial and play mono audio (click a **97.3** header tag or the Listen control). Stops the sweep; **Restart** or Listen again resumes it. MCP `sweep_config` reports `radioMode` and `listenMHz` (still read-only).
+- **Listen**: park the HackRF on a US FM dial and play mono audio (click a **97.3** header tag or the Listen control). An analog-style **knob** jumps between detected stations (right = higher MHz). The tuned station is a gold cursor on the spectrum. The waterfall panel shows a live **audio** spectrum (0–16 kHz) of the demodulated FM. Stops the RF sweep; **Restart** or Listen again resumes it. MCP `sweep_config` reports `radioMode` and `listenMHz` (still read-only).
 - MCP `spectrum_occupancy` (emitters above noise+8 dB, width, optional Wi-Fi `ch N` label) and `spectrum_history` (ring of summaries, new series on MHz/FFT change). `spectrum_summary` now includes `occupiedFraction` and `emitterCount`.
 
 ### Changed
+- Sweep range is one readout (type `88-108`, pan, zoom) instead of two Frequency start/end digit wheels. Quick Select and plot drag/scroll still set the same window.
 - Docs and GitHub about/topics present the app as an **MCP interface for AI agents** on a live HackRF sweep (same JVM as the GUI). New [docs/mcp.md](docs/mcp.md).
 - `src/hackrf-sweep` layout: Maven-standard Java tree (`src/main/{java,resources}`, `src/test/java`). Drop Eclipse CDT files, duplicate CSVs, unused Ant/JNAerator/32-bit/Zadig binaries. POM is indented, plugins version-pinned, `groupId` is `io.github.chris-piekarski`.
 

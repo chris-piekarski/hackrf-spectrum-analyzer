@@ -52,6 +52,14 @@ class SpectrumZoomTest {
 	}
 
 	@Test
+	void panShiftsByAQuarterSpan() {
+		FrequencyRange moved = SpectrumZoom.pan(new FrequencyRange(88, 108), 0.25);
+		assertEquals(93, moved.getStartMHz());
+		assertEquals(113, moved.getEndMHz());
+		assertEquals(20, moved.spanMHz());
+	}
+
+	@Test
 	void expandDoublesAroundTheMidpoint() {
 		FrequencyRange expanded = SpectrumZoom.expand(new FrequencyRange(88, 108));
 		assertEquals(40, expanded.getEndMHz() - expanded.getStartMHz());

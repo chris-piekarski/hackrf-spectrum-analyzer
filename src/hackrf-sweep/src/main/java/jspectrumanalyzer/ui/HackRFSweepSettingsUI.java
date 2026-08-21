@@ -51,8 +51,7 @@ public class HackRFSweepSettingsUI extends JPanel
 	private JLabel txtHackrfConnected;
 	private boolean radioSweeping;
 	private boolean syncingRadioCombo;
-	private FrequencySelectorPanel frequencySelectorStart;
-	private FrequencySelectorPanel frequencySelectorEnd;
+	private FrequencyRangePanel frequencyRangePanel;
 	private QuickFrequencySelectorPanel quickFrequencySelector;
 	private JSpinner spinnerFFTBinHz;
 	private JSlider sliderGain;
@@ -69,7 +68,8 @@ public class HackRFSweepSettingsUI extends JPanel
 	private JButton btnRestart;
 	private JButton btnStop;
 	private JButton btnListen;
-	private JSpinner spinnerListen;
+	private StationKnob stationKnob;
+	private TunerPanel tunerPanel;
 	private JSlider sliderVolume;
 	private JComboBox<String> comboRadio;
 	private JCheckBox checkBoxClkout;
@@ -104,10 +104,6 @@ public class HackRFSweepSettingsUI extends JPanel
 		this.hRF	= hackRFSettings;
 		AnalyzerLookAndFeel.install();
 		setBorder(new EmptyBorder(4, 8, 16, 8));
-		int minFreq = 1;
-		int maxFreq = 7250;
-		int freqStep = 1;
-
 		JPanel panelMainSettings	= new JPanel(new MigLayout("", "[123.00px,grow,leading]", "[][grow]"));
 
 		panelMainSettings.setBorder(new EmptyBorder(UIManager.getInsets("TabbedPane.tabAreaInsets")));;
@@ -118,17 +114,11 @@ public class HackRFSweepSettingsUI extends JPanel
 		quickFrequencySelector = new QuickFrequencySelectorPanel();
 		panelMainSettings.add(quickFrequencySelector, "cell 0 1,growx,aligny center");
 
-		JLabel lblNewLabel = new JLabel("Frequency start [MHz]");
-		panelMainSettings.add(lblNewLabel, "cell 0 2,growx,aligny center");
+		JLabel lblSweepRange = new JLabel("Sweep range");
+		panelMainSettings.add(lblSweepRange, "cell 0 2,growx,aligny center");
 
-		frequencySelectorStart = new FrequencySelectorPanel(minFreq, maxFreq, freqStep, minFreq);
-		panelMainSettings.add(frequencySelectorStart, "cell 0 3,growx,aligny center");
-
-		JLabel lblFrequencyEndmhz = new JLabel("Frequency end [MHz]");
-		panelMainSettings.add(lblFrequencyEndmhz, "cell 0 15,alignx left,aligny center");
-
-		frequencySelectorEnd = new FrequencySelectorPanel(minFreq, maxFreq, freqStep, maxFreq);
-		panelMainSettings.add(frequencySelectorEnd, "cell 0 16,grow");
+		frequencyRangePanel = new FrequencyRangePanel();
+		panelMainSettings.add(frequencyRangePanel, "cell 0 3,growx,aligny center");
 		
 		txtHackrfConnected = new JLabel();
 		txtHackrfConnected.setText(RadioIdentity.ABSENT.statusHtml());
@@ -148,39 +138,28 @@ public class HackRFSweepSettingsUI extends JPanel
 		btnStop.setToolTipText("Halt the native sweep and release USB so other tools can open the radio.");
 		btnPause = new JButton("Pause");
 		btnPause.setToolTipText("Freeze the display. The radio keeps sweeping; click Resume to show live data again.");
-		btnListen = new JButton("Listen");
-		btnListen.setToolTipText("Park the radio on a US FM station and play audio. Stops the sweep. Click a 97.3 tag to tune.");
-		spinnerListen = new JSpinner(new SpinnerNumberModel(97.3, 88.1, 107.9, 0.2));
-		spinnerListen.setToolTipText("US FM dial (88.1–107.9, 200 kHz).");
-		sliderVolume = new JSlider(0, 100, 80);
-		sliderVolume.setToolTipText("Listen volume.");
+		tunerPanel = new TunerPanel();
+		btnListen = tunerPanel.listenButton();
+		stationKnob = tunerPanel.knob();
+		sliderVolume = tunerPanel.volumeSlider();
 		ExclusiveToolTip.install(txtHackrfConnected);
 		ExclusiveToolTip.install(comboRadio);
 		ExclusiveToolTip.install(checkBoxClkout);
 		ExclusiveToolTip.install(btnRestart);
 		ExclusiveToolTip.install(btnStop);
 		ExclusiveToolTip.install(btnPause);
-		ExclusiveToolTip.install(btnListen);
-		ExclusiveToolTip.install(spinnerListen);
-		ExclusiveToolTip.install(sliderVolume);
-
 		JPanel radioButtons = new JPanel(new GridLayout(1, 2, 4, 0));
 		radioButtons.add(btnRestart);
 		radioButtons.add(btnStop);
 
-		JPanel listenRow = new JPanel(new BorderLayout(4, 0));
-		listenRow.add(btnListen, BorderLayout.CENTER);
-		listenRow.add(spinnerListen, BorderLayout.EAST);
-
-		JPanel radioStrip = new JPanel(new GridLayout(0, 1, 0, 4));
+		JPanel radioStrip = new JPanel(new MigLayout("insets 0, wrap 1, gapy 4", "[grow,fill]", ""));
 		radioStrip.add(txtHackrfConnected);
 		radioStrip.add(comboRadio);
 		radioStrip.add(checkBoxClkout);
 		radioStrip.add(radioButtons);
-		radioStrip.add(listenRow);
-		radioStrip.add(sliderVolume);
+		radioStrip.add(tunerPanel);
 		radioStrip.add(btnPause);
-		panelMainSettings.add(radioStrip, "cell 0 24,growx");
+		panelMainSettings.add(radioStrip, "cell 0 4,growx");
 
 		
 		
@@ -385,7 +364,7 @@ public class HackRFSweepSettingsUI extends JPanel
 	}
 
 	private void bindViewToModel() {
-		frequencyRangeSelector = new FrequencySelectorRangeBinder(frequencySelectorStart, frequencySelectorEnd, quickFrequencySelector);
+		frequencyRangeSelector = new FrequencySelectorRangeBinder(frequencyRangePanel, quickFrequencySelector);
 
 		new MVCController(spinnerFFTBinHz, hRF.getFFTBinHz(), 
 				viewValue -> Integer.parseInt(viewValue.toString().replaceAll("\\s", "")), 
@@ -439,20 +418,31 @@ public class HackRFSweepSettingsUI extends JPanel
 			else
 				hRF.startListen();
 		});
-		new MVCController(spinnerListen, hRF.getListenKHz(),
-				view -> jspectrumanalyzer.core.FmChannelPlan.clamp(((Number) view).doubleValue()).centerKHz,
-				model -> model / 1000.0);
 		new MVCController(sliderVolume, hRF.getListenVolume());
+		tunerPanel.setOnTune(dir -> {
+			jspectrumanalyzer.core.FmChannel next = jspectrumanalyzer.core.FmStationDial.tune(
+					hRF.getListenKHz().getValue(), dir);
+			if (next.centerKHz != hRF.getListenKHz().getValue())
+				hRF.getListenKHz().setValue(next.centerKHz);
+		});
+		tunerPanel.setOnSeek(dir -> {
+			jspectrumanalyzer.core.FmChannel next = jspectrumanalyzer.core.FmStationDial.seek(
+					hRF.getDetectedFmStations().getValue(), hRF.getListenKHz().getValue(), dir);
+			if (next.centerKHz != hRF.getListenKHz().getValue())
+				hRF.getListenKHz().setValue(next.centerKHz);
+		});
 		Runnable syncListen = () -> {
 			boolean listen = Boolean.TRUE.equals(hRF.isListening().getValue());
 			boolean released = Boolean.TRUE.equals(hRF.isRadioReleased().getValue());
-			jspectrumanalyzer.core.FmChannel ch = jspectrumanalyzer.core.FmChannelPlan
-					.clamp(hRF.getListenKHz().getValue() / 1000.0);
-			btnListen.setText(listen ? "Listening " + ch.label() : "Listen");
+			int kHz = hRF.getListenKHz().getValue();
+			tunerPanel.setKHz(kHz);
+			tunerPanel.setListening(listen);
+			tunerPanel.setStations(hRF.getDetectedFmStations().getValue());
 			btnPause.setEnabled(!listen && !released);
 		};
 		hRF.isListening().addListener(() -> SwingUtilities.invokeLater(syncListen));
 		hRF.getListenKHz().addListener(() -> SwingUtilities.invokeLater(syncListen));
+		hRF.getDetectedFmStations().addListener(hits -> SwingUtilities.invokeLater(() -> tunerPanel.setStations(hits)));
 		syncListen.run();
 		new MVCController(checkBoxClkout, hRF.getClkoutEnable());
 		refreshRadioCombo();
@@ -566,8 +556,12 @@ public class HackRFSweepSettingsUI extends JPanel
 		return btnListen;
 	}
 
-	JSpinner listenSpinner() {
-		return spinnerListen;
+	StationKnob stationKnob() {
+		return stationKnob;
+	}
+
+	TunerPanel tunerPanel() {
+		return tunerPanel;
 	}
 
 	JButton restartButton() {
@@ -588,6 +582,10 @@ public class HackRFSweepSettingsUI extends JPanel
 
 	JLabel connectedLabel() {
 		return txtHackrfConnected;
+	}
+
+	FrequencyRangePanel frequencyRangePanel() {
+		return frequencyRangePanel;
 	}
 
 	JSpinner fftBinSpinner() {

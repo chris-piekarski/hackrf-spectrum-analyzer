@@ -193,6 +193,11 @@ public class FakeHackRFSettings implements HackRFSettings {
 	}
 
 	@Override
+	public ModelValue<java.util.List<jspectrumanalyzer.core.FmStationHit>> getDetectedFmStations() {
+		return inner.getDetectedFmStations();
+	}
+
+	@Override
 	public List<String> listRadioSerials() {
 		return inner.listRadioSerials();
 	}

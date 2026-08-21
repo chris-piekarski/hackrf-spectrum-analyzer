@@ -43,6 +43,19 @@ class WaterfallPlotMathTest {
     }
 
     @Test
+    void modeBannerNamesRfAndAudio() {
+        assertEquals("RF waterfall", WaterfallPlot.modeBanner(false));
+        assertEquals("AUDIO  ·  0–16 kHz", WaterfallPlot.modeBanner(true));
+    }
+
+    @Test
+    void formatAudioHzUsesKiloWhenNeeded() {
+        assertEquals("440 Hz", WaterfallPlot.formatAudioHz(440));
+        assertEquals("1.0 kHz", WaterfallPlot.formatAudioHz(1000));
+        assertEquals("16.0 kHz", WaterfallPlot.formatAudioHz(16000));
+    }
+
+    @Test
     void translateXToFrequencyMapsAndClamps() {
         assertEquals(-1.0, WaterfallPlot.translateXToFrequency(10, 0, 2.4e9, 2.5e9), 1.0);
         assertEquals(2.4e9, WaterfallPlot.translateXToFrequency(0, 100, 2.4e9, 2.5e9), 1.0);

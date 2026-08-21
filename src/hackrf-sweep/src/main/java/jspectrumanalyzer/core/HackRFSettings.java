@@ -89,6 +89,9 @@ public interface HackRFSettings {
 
 	public ModelValueInt getListenVolume();
 
+	/** Live FM detections for the tuner knob (may be empty). */
+	public ModelValue<java.util.List<FmStationHit>> getDetectedFmStations();
+
 	/** USB serials currently visible to libhackrf (may be empty). */
 	public java.util.List<String> listRadioSerials();
 

@@ -83,6 +83,7 @@ import jspectrumanalyzer.core.FmBandLayer;
 import jspectrumanalyzer.core.FmChannel;
 import jspectrumanalyzer.core.FmChannelPlan;
 import jspectrumanalyzer.core.FmListenEngine;
+import jspectrumanalyzer.core.FmStationDial;
 import jspectrumanalyzer.core.FmStationHit;
 import jspectrumanalyzer.core.FmStationTracker;
 import jspectrumanalyzer.core.FrequencyAxis;
@@ -94,6 +95,7 @@ import jspectrumanalyzer.core.AutoGainPolicy;
 import jspectrumanalyzer.core.GainPolicy;
 import jspectrumanalyzer.core.AudioSink;
 import jspectrumanalyzer.core.AudioSinks;
+import jspectrumanalyzer.core.AudioSpectrum;
 import jspectrumanalyzer.core.HackRFSettings;
 import jspectrumanalyzer.core.PersistentDisplay;
 import jspectrumanalyzer.core.RecordingAudioSink;
@@ -535,6 +537,11 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	}
 
 	@Override
+	public ModelValue<java.util.List<FmStationHit>> getDetectedFmStations() {
+		return settings.getDetectedFmStations();
+	}
+
+	@Override
 	public void releaseRadio() {
 		settings.releaseRadio();
 	}
@@ -704,6 +711,12 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		return settings.getFrequency().getValue();
 	}
 
+	private void publishDetectedStations(java.util.List<FmStationHit> hits) {
+		if (FmStationDial.sameChannels(settings.getDetectedFmStations().getValue(), hits))
+			return;
+		settings.getDetectedFmStations().setValue(hits == null ? java.util.List.of() : java.util.List.copyOf(hits));
+	}
+
 	private void printInit(int initNumber) {
 		//		System.out.println("Startup "+(initNumber++)+" in " + (System.currentTimeMillis() - initTime) + "ms");
 	}
@@ -750,6 +763,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				FrequencyRange live = getFreq();
 				java.util.List<FmStationHit> hits = fmTracker.update(ds, live.getStartMHz(), live.getEndMHz());
 				fmStations = hits;
+				publishDetectedStations(hits);
 				snapshotStore.publishSweep(jspectrumanalyzer.mcp.SpectrumSnapshot.fromDataset(ds, nowMs,
 						jspectrumanalyzer.mcp.SpectrumSnapshot.DEFAULT_MAX_POINTS, null), nowMs);
 				double sps = waterfallPlot != null ? waterfallPlot.getFps() : 0;
@@ -768,6 +782,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 			FrequencyRange sweepRange = getFreq();
 			fmStations = fmTracker.update(ds, sweepRange.getStartMHz(), sweepRange.getEndMHz());
+			publishDetectedStations(fmStations);
 			considerAutoGain(ds, sweepRange);
 
 			if (System.currentTimeMillis() - perfWatch.lastStatisticsRefreshed > 1000) {
@@ -1102,7 +1117,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				WifiChannelOverlay.paint(g2, area, xy.getDomainAxis(), xy.getDomainAxisEdge(),
 						range.getStartMHz(), range.getEndMHz());
 				FmChannelOverlay.paint(g2, area, xy.getDomainAxis(), xy.getDomainAxisEdge(),
-						range.getStartMHz(), range.getEndMHz(), fmStations);
+						range.getStartMHz(), range.getEndMHz(), fmStations, settings.getListenKHz().getValue());
 				if (settings.isListening().getValue())
 					ListenHud.paint(g2, area, settings.getListenKHz().getValue() / 1000.0, fmAudioOk);
 				spectrumZoomOverlay.paint(g2, area);
@@ -1298,7 +1313,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			return;
 		FrequencyRange range = getFreq();
 		FrequencyAxis axis = FrequencyAxis.fromArea(area, range.getStartMHz(), range.getEndMHz());
-		java.util.List<BandMark> marks = FmBandLayer.marks(axis, fmStations);
+		java.util.List<BandMark> marks = FmBandLayer.marks(axis, fmStations, settings.getListenKHz().getValue());
 		BandMark hit = BandHeaderPainter.hitTest(e.getX(), e.getY(), area, axis, marks);
 		if (hit == null)
 			return;
@@ -1400,6 +1415,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			if (settings.isListening().getValue())
 				restartHackrfSweep();
 			snapshotStore.publishContext(settings, fmStations, 0);
+			if (chartPanel != null)
+				SwingUtilities.invokeLater(chartPanel::repaint);
 		});
 		settings.getListenVolume().addListener(v -> fmEngine.setVolume(v));
 		settings.isListening().addListener(() -> {
@@ -1562,6 +1579,30 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		if (loHz < 1_000_000L)
 			loHz = 1_000_000L;
 		fmEngine.setVolume(settings.getListenVolume().getValue());
+		waterfallPlot.setAudioMode(true);
+		waterfallPlot.applyPowerWindow(-80, 0);
+		final long[] lastRowMs = { 0L };
+		fmEngine.setSpectrumListener(row -> {
+			long now = System.currentTimeMillis();
+			if (now - lastRowMs[0] < 33)
+				return;
+			lastRowMs[0] = now;
+			waterfallPlot.addAudioFrame(row, AudioSpectrum.DISPLAY_HZ);
+			waterfallPlot.repaint();
+			float peak = -150f;
+			for (int i = 0; i < row.length; i++)
+			{
+				if (row[i] > peak)
+					peak = row[i];
+			}
+			final float peakDb = peak;
+			final int bins = row.length;
+			SwingUtilities.invokeLater(() -> {
+				if (sweepStatusBar != null && settings.isListening().getValue())
+					sweepStatusBar.setSweepInfo(AudioSpectrum.BIN_HZ, bins, waterfallPlot.getFps(),
+							Double.valueOf(peakDb), true);
+			});
+		});
 		AudioSink sink = AudioSinks.openPlayback();
 		fmAudioOk = !(sink instanceof RecordingAudioSink);
 		fmEngine.start(sink);
@@ -1575,7 +1616,9 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 					settings.getGainLNA().getValue(), settings.getGainVGA().getValue(),
 					settings.getAntennaPowerEnable().getValue(), settings.getAntennaLNA().getValue());
 		} finally {
+			fmEngine.setSpectrumListener(null);
 			fmEngine.stop();
+			waterfallPlot.setAudioMode(false);
 		}
 	}
 

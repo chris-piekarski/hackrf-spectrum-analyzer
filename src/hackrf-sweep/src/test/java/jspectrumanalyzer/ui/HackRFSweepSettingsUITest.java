@@ -116,4 +116,70 @@ class HackRFSweepSettingsUITest {
         assertEquals(1, settings.restartSweepCalls);
         assertEquals(0, settings.releaseRadioCalls);
     }
+
+    @Test
+    void stationKnobJumpsBetweenDetectedStations() throws Exception {
+        FakeHackRFSettings settings = new FakeHackRFSettings();
+        settings.getDetectedFmStations().setValue(java.util.List.of(
+                new jspectrumanalyzer.core.FmStationHit(jspectrumanalyzer.core.FmChannelPlan.nearest(88.1), -40f),
+                new jspectrumanalyzer.core.FmStationHit(jspectrumanalyzer.core.FmChannelPlan.nearest(97.3), -30f),
+                new jspectrumanalyzer.core.FmStationHit(jspectrumanalyzer.core.FmChannelPlan.nearest(101.1), -35f)));
+        settings.getListenKHz().setValue(97300);
+        HackRFSweepSettingsUI ui = new HackRFSweepSettingsUI(settings);
+        flushEdt();
+        assertEquals(97300, ui.stationKnob().getKHz());
+        SwingUtilities.invokeAndWait(() -> ui.stationKnob().nudge(+1));
+        flushEdt();
+        assertEquals(101100, settings.getListenKHz().getValue());
+        SwingUtilities.invokeAndWait(() -> ui.stationKnob().nudge(-1));
+        flushEdt();
+        assertEquals(97300, settings.getListenKHz().getValue());
+    }
+
+    @Test
+    void tuneIsOneChannelAndSeekSkipsToTheNextHit() throws Exception {
+        FakeHackRFSettings settings = new FakeHackRFSettings();
+        settings.getDetectedFmStations().setValue(java.util.List.of(
+                new jspectrumanalyzer.core.FmStationHit(jspectrumanalyzer.core.FmChannelPlan.nearest(88.1), -40f),
+                new jspectrumanalyzer.core.FmStationHit(jspectrumanalyzer.core.FmChannelPlan.nearest(97.3), -30f),
+                new jspectrumanalyzer.core.FmStationHit(jspectrumanalyzer.core.FmChannelPlan.nearest(101.1), -35f)));
+        settings.getListenKHz().setValue(97300);
+        HackRFSweepSettingsUI ui = new HackRFSweepSettingsUI(settings);
+        flushEdt();
+        SwingUtilities.invokeAndWait(() -> ui.tunerPanel().tuneUpButton().doClick());
+        flushEdt();
+        assertEquals(97500, settings.getListenKHz().getValue());
+        SwingUtilities.invokeAndWait(() -> ui.tunerPanel().seekUpButton().doClick());
+        flushEdt();
+        assertEquals(101100, settings.getListenKHz().getValue());
+    }
+
+    @Test
+    void sweepRangePanelReplacesDigitWheelsAndUpdatesTheModel() throws Exception {
+        FakeHackRFSettings settings = new FakeHackRFSettings();
+        HackRFSweepSettingsUI ui = new HackRFSweepSettingsUI(settings);
+        flushEdt();
+        assertNotNull(ui.frequencyRangePanel());
+        assertEquals(0, countComponents(ui, jspectrumanalyzer.ui.FrequencySelectorPanel.class));
+        SwingUtilities.invokeAndWait(() -> ui.frequencyRangePanel().setRange(
+                new jspectrumanalyzer.core.FrequencyRange(88, 108)));
+        flushEdt();
+        assertEquals(88, settings.getFrequency().getValue().getStartMHz());
+        assertEquals(108, settings.getFrequency().getValue().getEndMHz());
+        SwingUtilities.invokeAndWait(() -> ui.frequencyRangePanel().panRightButton().doClick());
+        flushEdt();
+        assertEquals(93, settings.getFrequency().getValue().getStartMHz());
+        assertEquals(113, settings.getFrequency().getValue().getEndMHz());
+    }
+
+    private static int countComponents(java.awt.Container root, Class<?> type) {
+        int n = type.isInstance(root) ? 1 : 0;
+        for (java.awt.Component child : root.getComponents()) {
+            if (child instanceof java.awt.Container)
+                n += countComponents((java.awt.Container) child, type);
+            else if (type.isInstance(child))
+                n++;
+        }
+        return n;
+    }
 }

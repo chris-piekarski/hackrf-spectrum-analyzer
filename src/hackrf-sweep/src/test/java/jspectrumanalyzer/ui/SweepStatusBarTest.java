@@ -1,6 +1,7 @@
 package jspectrumanalyzer.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,5 +27,17 @@ class SweepStatusBarTest {
 		assertEquals("81 fps", SweepStatusBar.formatFps(81.4));
 		assertEquals("—", SweepStatusBar.formatPeakDbm(null));
 		assertEquals("-6.6 dBm", SweepStatusBar.formatPeakDbm(Double.valueOf(-6.6)));
+		assertEquals("-12.0 dBFS", SweepStatusBar.formatPeakDbfs(Double.valueOf(-12)));
+	}
+
+	@Test
+	void setSweepInfoShowsRfOrAudioPanelMode() {
+		SweepStatusBar bar = new SweepStatusBar();
+		bar.setSweepInfo(100_000, 200, 80, Double.valueOf(-40));
+		assertTrue(bar.getModeText().contains("RF waterfall"));
+		assertTrue(bar.getPeakText().contains("dBm"));
+		bar.setSweepInfo(46.875, 342, 30, Double.valueOf(-12), true);
+		assertTrue(bar.getModeText().contains("AUDIO"));
+		assertTrue(bar.getPeakText().contains("dBFS"));
 	}
 }

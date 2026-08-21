@@ -8,7 +8,7 @@ public final class BandMark
 {
 	public enum Style
 	{
-		PRIMARY, SECONDARY, SURVEY
+		PRIMARY, SECONDARY, SURVEY, TUNED
 	}
 
 	public enum LabelFit

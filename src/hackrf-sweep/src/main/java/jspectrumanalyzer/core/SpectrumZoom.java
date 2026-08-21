@@ -5,7 +5,7 @@ import java.util.Optional;
 
 /**
  * Grafana-style frequency zoom: drag a span to zoom in, expand or pop
- * history to zoom out. Integer MHz for the start/end selectors.
+ * history to zoom out. Integer MHz for the sweep-range window.
  */
 public final class SpectrumZoom
 {
@@ -69,6 +69,18 @@ public final class SpectrumZoom
 		int start = (int) Math.floor(mid - span / 2.0);
 		int end = (int) Math.ceil(mid + span / 2.0);
 		return clamp(start, end);
+	}
+
+	/** Slide the window by a fraction of its span (positive = higher MHz). */
+	public static FrequencyRange pan(FrequencyRange current, double fractionOfSpan)
+	{
+		if (current == null)
+			return clamp(MIN_MHZ, MAX_MHZ);
+		int span = current.getEndMHz() - current.getStartMHz();
+		int shift = (int) Math.round(span * fractionOfSpan);
+		if (shift == 0)
+			shift = fractionOfSpan >= 0 ? 1 : -1;
+		return clamp(current.getStartMHz() + shift, current.getEndMHz() + shift);
 	}
 
 	public static FrequencyRange expand(FrequencyRange current)

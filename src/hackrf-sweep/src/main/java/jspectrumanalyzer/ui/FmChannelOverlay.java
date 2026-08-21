@@ -32,8 +32,14 @@ public final class FmChannelOverlay
 	public static void paint(Graphics2D g0, Rectangle2D area, ValueAxis domain, RectangleEdge edge, double startMHz,
 			double endMHz, List<FmStationHit> stations)
 	{
+		paint(g0, area, domain, edge, startMHz, endMHz, stations, null);
+	}
+
+	public static void paint(Graphics2D g0, Rectangle2D area, ValueAxis domain, RectangleEdge edge, double startMHz,
+			double endMHz, List<FmStationHit> stations, Integer selectedKHz)
+	{
 		FrequencyAxis axis = FrequencyAxis.fromArea(area, startMHz, endMHz);
-		BandHeaderPainter.paint(g0, area, axis, FmBandLayer.marks(axis, stations));
+		BandHeaderPainter.paint(g0, area, axis, FmBandLayer.marks(axis, stations, selectedKHz));
 	}
 
 	static Color withConfidence(Color base, float confidence)

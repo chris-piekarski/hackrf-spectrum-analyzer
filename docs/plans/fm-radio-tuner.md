@@ -23,7 +23,8 @@ One RF path. **Listening stops the sweep.** Pause still only freezes the plot. S
 - [x] Docs: usage, architecture, mcp, hackrf-setup, CHANGELOG, AGENTS
 - [x] `make test` 287/287
 - [ ] Hardware IT listen start/stop then resume sweep (needs exclusive USB)
-- [ ] Live listen on FM Quick Select with speakers (relaunch the GUI)
+- [x] Live listen on FM Quick Select with speakers (relaunch the GUI)
+- [x] Analog knob jumps detected stations; spectrum highlights the tuned station
 
 ## Non-goals (v1)
 

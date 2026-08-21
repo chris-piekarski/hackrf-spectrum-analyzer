@@ -95,11 +95,10 @@ class QuickFrequencySelectorPanelTest {
 
     @Test
     void testWorksWithBinder() throws PropertyVetoException {
-        FrequencySelectorPanel start = new FrequencySelectorPanel(1, 7250, 1, 2400);
-        FrequencySelectorPanel end = new FrequencySelectorPanel(1, 7250, 1, 2500);
+        FrequencyRangePanel range = new FrequencyRangePanel();
         QuickFrequencySelectorPanel quick = new QuickFrequencySelectorPanel();
 
-        FrequencySelectorRangeBinder binder = new FrequencySelectorRangeBinder(start, end, quick);
+        FrequencySelectorRangeBinder binder = new FrequencySelectorRangeBinder(range, quick);
 
         // Simulate quick change by directly triggering the vetoable logic? The listener is internal.
         // Since the binder wires the vetoable, we can call the public set on quick? But quick doesn't have public setValue.

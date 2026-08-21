@@ -33,6 +33,19 @@ class FmBandLayerTest {
 	}
 
 	@Test
+	void selectedStationIsTunedAndFullHeight() {
+		FrequencyAxis axis = FrequencyAxis.of(88, 108, 800);
+		FmStationHit a = new FmStationHit(FmChannelPlan.nearest(97.3), -40f, 1f);
+		FmStationHit b = new FmStationHit(FmChannelPlan.nearest(101.1), -30f, 1f);
+		List<BandMark> marks = FmBandLayer.marks(axis, List.of(a, b), 97300);
+		BandMark tuned = marks.stream().filter(m -> m.style == BandMark.Style.TUNED).findFirst().orElseThrow();
+		assertEquals("97.3", tuned.label);
+		assertTrue(tuned.centerTick);
+		assertFalse(tuned.fullHeightFill);
+		assertEquals(1f, tuned.intensity, 0.001f);
+	}
+
+	@Test
 	void marksEmptyOnASurveyEvenWithHits() {
 		FmStationHit hit = new FmStationHit(FmChannelPlan.nearest(97.3), -40f, 1f);
 		assertTrue(FmBandLayer.marks(FrequencyAxis.of(1, 7250, 900), List.of(hit)).isEmpty());

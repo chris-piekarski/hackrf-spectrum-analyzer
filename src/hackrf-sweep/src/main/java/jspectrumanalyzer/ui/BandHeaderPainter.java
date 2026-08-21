@@ -22,6 +22,11 @@ public final class BandHeaderPainter
 {
 	public static final int HEADER_H = 16;
 	public static final int MIN_LABEL_GAP_PX = 10;
+	private static final Color FILL_TUNED = new Color(255, 180, 50, 36);
+	private static final Color FILL_TUNED_HEADER = new Color(255, 196, 64, 230);
+	private static final Color LINE_TUNED = new Color(255, 214, 80, 245);
+	private static final Color LABEL_TUNED = new Color(255, 214, 90, 255);
+	private static final Stroke TUNED_CURSOR = new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
 	private static final Color FILL_PRIMARY = new Color(80, 160, 230, 110);
 	private static final Color FILL_SECONDARY = new Color(160, 160, 160, 70);
 	private static final Color FILL_SURVEY = new Color(160, 160, 160, 18);
@@ -56,7 +61,7 @@ public final class BandHeaderPainter
 		double bestDist = Double.MAX_VALUE;
 		for (BandMark mark : marks)
 		{
-			if (mark == null || mark.style != BandMark.Style.PRIMARY)
+			if (mark == null || (mark.style != BandMark.Style.PRIMARY && mark.style != BandMark.Style.TUNED))
 				continue;
 			if (!axis.occupancyVisible(mark.lowMHz, mark.highMHz))
 				continue;
@@ -145,7 +150,7 @@ public final class BandHeaderPainter
 			}
 			for (BandMark mark : marks)
 			{
-				if (!mark.centerTick || !mark.centerIn(axis))
+				if (!mark.centerTick || !mark.centerIn(axis) || mark.style == BandMark.Style.TUNED)
 					continue;
 				int xi = axis.mhzToXInt(mark.labelMHz);
 				if (xi < area.getMinX() || xi > area.getMaxX())
@@ -153,38 +158,59 @@ public final class BandHeaderPainter
 				g.setColor(withIntensity(tick(mark.style), mark.intensity));
 				g.drawLine(xi, top, xi, bottom);
 			}
-
-			List<double[]> placed = new ArrayList<>();
-			g.setColor(LABEL);
-			float labelY = labelBaselineY(area, fm);
+			g.setStroke(TUNED_CURSOR);
 			for (BandMark mark : marks)
 			{
-				if (mark.label.isEmpty() || !mark.centerIn(axis))
+				if (mark.style != BandMark.Style.TUNED || !mark.centerIn(axis))
 					continue;
-				double x = axis.mhzToX(mark.labelMHz);
-				if (x < area.getMinX() || x > area.getMaxX())
+				int xi = axis.mhzToXInt(mark.labelMHz);
+				if (xi < area.getMinX() || xi > area.getMaxX())
 					continue;
-				int w = fm.stringWidth(mark.label);
-				if (mark.labelFit == BandMark.LabelFit.FIT_OCCUPANCY)
-				{
-					double occ = Math.abs(axis.mhzToX(axis.clipHigh(mark.highMHz))
-							- axis.mhzToX(axis.clipLow(mark.lowMHz)));
-					if (w > occ - 4)
-						continue;
-				}
-				double left = x - w / 2.0;
-				double right = left + w;
-				if (left < area.getMinX() + 1 || right > area.getMaxX() - 1)
-					continue;
-				if (overlaps(placed, left, right))
-					continue;
-				g.drawString(mark.label, (float) left, labelY);
-				placed.add(new double[] { left, right });
+				g.setColor(LINE_TUNED);
+				g.drawLine(xi, top, xi, bottom);
 			}
+
+			List<double[]> placed = new ArrayList<>();
+			float labelY = labelBaselineY(area, fm);
+			paintLabels(g, fm, axis, area, marks, placed, labelY, false);
+			paintLabels(g, fm, axis, area, marks, placed, labelY, true);
 		}
 		finally
 		{
 			g.dispose();
+		}
+	}
+
+	private static void paintLabels(Graphics2D g, FontMetrics fm, FrequencyAxis axis, Rectangle2D area,
+			List<BandMark> marks, List<double[]> placed, float labelY, boolean tuned)
+	{
+		g.setColor(tuned ? LABEL_TUNED : LABEL);
+		g.setFont(new Font(Font.SANS_SERIF, tuned ? Font.BOLD : Font.PLAIN, tuned ? 11 : 10));
+		for (BandMark mark : marks)
+		{
+			if (mark.label.isEmpty() || !mark.centerIn(axis))
+				continue;
+			if ((mark.style == BandMark.Style.TUNED) != tuned)
+				continue;
+			double x = axis.mhzToX(mark.labelMHz);
+			if (x < area.getMinX() || x > area.getMaxX())
+				continue;
+			int w = g.getFontMetrics().stringWidth(mark.label);
+			if (!tuned && mark.labelFit == BandMark.LabelFit.FIT_OCCUPANCY)
+			{
+				double occ = Math.abs(axis.mhzToX(axis.clipHigh(mark.highMHz))
+						- axis.mhzToX(axis.clipLow(mark.lowMHz)));
+				if (w > occ - 4)
+					continue;
+			}
+			double left = x - w / 2.0;
+			double right = left + w;
+			if (left < area.getMinX() + 1 || right > area.getMaxX() - 1)
+				continue;
+			if (!tuned && overlaps(placed, left, right))
+				continue;
+			g.drawString(mark.label, (float) left, labelY);
+			placed.add(new double[] { left, right });
 		}
 	}
 
@@ -212,6 +238,8 @@ public final class BandHeaderPainter
 
 	private static Color headerFill(BandMark.Style style)
 	{
+		if (style == BandMark.Style.TUNED)
+			return FILL_TUNED_HEADER;
 		if (style == BandMark.Style.PRIMARY)
 			return FILL_PRIMARY;
 		if (style == BandMark.Style.SURVEY)
@@ -221,11 +249,15 @@ public final class BandHeaderPainter
 
 	private static Color fullFill(BandMark.Style style)
 	{
+		if (style == BandMark.Style.TUNED)
+			return FILL_TUNED;
 		return style == BandMark.Style.SURVEY ? FILL_SURVEY : FILL_FULL_PRIMARY;
 	}
 
 	private static Color tick(BandMark.Style style)
 	{
+		if (style == BandMark.Style.TUNED)
+			return LINE_TUNED;
 		if (style == BandMark.Style.PRIMARY)
 			return LINE_PRIMARY;
 		if (style == BandMark.Style.SURVEY)

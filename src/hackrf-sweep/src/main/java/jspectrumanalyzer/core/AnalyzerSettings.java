@@ -90,6 +90,8 @@ public final class AnalyzerSettings implements HackRFSettings
 	private final ModelValueInt listenKHz = new ModelValueInt("Listen [kHz]", 97300, 200,
 			FmChannelPlan.FIRST_CENTER_KHZ, FmChannelPlan.LAST_CENTER_KHZ);
 	private final ModelValueInt listenVolume = new ModelValueInt("Volume", 80, 1, 0, 100);
+	private final ModelValue<List<FmStationHit>> detectedFmStations = new ModelValue<List<FmStationHit>>(
+			"Detected FM", List.of());
 
 	public void setHardware(Hardware hardware)
 	{
@@ -307,6 +309,12 @@ public final class AnalyzerSettings implements HackRFSettings
 	public ModelValueInt getListenVolume()
 	{
 		return listenVolume;
+	}
+
+	@Override
+	public ModelValue<List<FmStationHit>> getDetectedFmStations()
+	{
+		return detectedFmStations;
 	}
 
 	public RadioMode radioMode()

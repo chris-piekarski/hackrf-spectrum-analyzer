@@ -14,6 +14,7 @@ import javax.swing.SwingConstants;
 public class SweepStatusBar extends JPanel {
 	private static final long serialVersionUID = 1L;
 
+	private final JLabel mode = field("Panel  RF waterfall");
 	private final JLabel resolution = field("Resolution  —");
 	private final JLabel bins = field("FFT bins  —");
 	private final JLabel rate = field("Waterfall  —");
@@ -23,6 +24,9 @@ public class SweepStatusBar extends JPanel {
 		AnalyzerLookAndFeel.install();
 		setLayout(new FlowLayout(FlowLayout.LEFT, 16, 2));
 		setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+		mode.setFont(mode.getFont().deriveFont(Font.BOLD, 12f));
+		add(mode);
+		add(sep());
 		add(resolution);
 		add(sep());
 		add(bins);
@@ -33,10 +37,15 @@ public class SweepStatusBar extends JPanel {
 	}
 
 	public void setSweepInfo(double rbwHz, int fftBins, double waterfallFps, Double peakDbm) {
+		setSweepInfo(rbwHz, fftBins, waterfallFps, peakDbm, false);
+	}
+
+	public void setSweepInfo(double rbwHz, int fftBins, double waterfallFps, Double peakDbm, boolean audio) {
+		mode.setText("Panel  " + WaterfallPlot.modeBanner(audio));
 		resolution.setText("Resolution  " + formatHz(rbwHz));
 		bins.setText("FFT bins  " + formatBins(fftBins));
-		rate.setText("Waterfall  " + formatFps(waterfallFps));
-		peak.setText("Peak  " + formatPeakDbm(peakDbm));
+		rate.setText((audio ? "Audio  " : "Waterfall  ") + formatFps(waterfallFps));
+		peak.setText("Peak  " + (audio ? formatPeakDbfs(peakDbm) : formatPeakDbm(peakDbm)));
 	}
 
 	public static String formatHz(double hz) {
@@ -65,6 +74,20 @@ public class SweepStatusBar extends JPanel {
 		if (peakDbm == null || peakDbm.isNaN() || peakDbm.isInfinite())
 			return "—";
 		return String.format("%.1f dBm", peakDbm);
+	}
+
+	public static String formatPeakDbfs(Double peakDb) {
+		if (peakDb == null || peakDb.isNaN() || peakDb.isInfinite())
+			return "—";
+		return String.format("%.1f dBFS", peakDb);
+	}
+
+	String getModeText() {
+		return mode.getText();
+	}
+
+	String getPeakText() {
+		return peak.getText();
 	}
 
 	private static JLabel field(String text) {

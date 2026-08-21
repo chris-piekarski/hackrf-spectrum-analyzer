@@ -20,6 +20,8 @@ public final class FmListenEngine
 	private final AtomicLong offered = new AtomicLong();
 	private final short[] pcm = new short[WfmDemodulator.IQ_RATE_HZ / 50];
 	private volatile AudioSink sink;
+	private volatile AudioSpectrum.FrameListener spectrumListener;
+	private final AudioSpectrum audioSpectrum = new AudioSpectrum();
 	private volatile boolean run;
 	private Thread worker;
 
@@ -28,6 +30,7 @@ public final class FmListenEngine
 		stop();
 		this.sink = sink == null ? new RecordingAudioSink() : sink;
 		demod.reset();
+		audioSpectrum.reset();
 		queue.clear();
 		dropped.set(0);
 		offered.set(0);
@@ -58,6 +61,16 @@ public final class FmListenEngine
 		sink = null;
 		if (s != null)
 			s.close();
+	}
+
+	public void setSpectrumListener(AudioSpectrum.FrameListener listener)
+	{
+		this.spectrumListener = listener;
+	}
+
+	public AudioSpectrum audioSpectrum()
+	{
+		return audioSpectrum;
 	}
 
 	public void setVolume(int volume0to100)
@@ -111,9 +124,21 @@ public final class FmListenEngine
 			}
 			if (chunk == null)
 				continue;
-			int n = demod.processIq(chunk, chunk.length, volume.get(), pcm);
+			int n = demod.processIq(chunk, chunk.length, 100, pcm);
+			if (n <= 0)
+				continue;
+			float[] row = audioSpectrum.accept(pcm, n);
+			AudioSpectrum.FrameListener spec = spectrumListener;
+			if (row != null && spec != null)
+				spec.onFrame(row);
+			int vol = volume.get();
+			if (vol < 100)
+			{
+				for (int i = 0; i < n; i++)
+					pcm[i] = (short) (pcm[i] * vol / 100);
+			}
 			AudioSink s = sink;
-			if (n > 0 && s != null)
+			if (s != null)
 				s.write(pcm, 0, n);
 		}
 	}

@@ -31,6 +31,11 @@ public final class FmBandLayer
 
 	public static List<BandMark> marks(FrequencyAxis axis, List<FmStationHit> stations)
 	{
+		return marks(axis, stations, null);
+	}
+
+	public static List<BandMark> marks(FrequencyAxis axis, List<FmStationHit> stations, Integer selectedKHz)
+	{
 		if (!tagsReadable(axis) || stations == null || stations.isEmpty())
 			return List.of();
 		List<FmStationHit> hits = new ArrayList<>();
@@ -47,12 +52,23 @@ public final class FmBandLayer
 			return byConf != 0 ? byConf : Float.compare(b.powerDbm, a.powerDbm);
 		});
 		List<BandMark> out = new ArrayList<>();
+		boolean haveTuned = false;
 		for (FmStationHit hit : hits)
 		{
 			FmChannel ch = hit.channel;
-			out.add(new BandMark(ch.lowMHz(), ch.highMHz(), ch.centerMHz(), hit.label(), BandMark.Style.PRIMARY,
-					false, false, ch.centerIn(axis.startMHz, axis.endMHz), BandMark.LabelFit.DROP_IF_OVERLAP,
-					hit.confidence));
+			boolean tuned = selectedKHz != null && ch.centerKHz == selectedKHz.intValue();
+			haveTuned |= tuned;
+			out.add(new BandMark(ch.lowMHz(), ch.highMHz(), ch.centerMHz(), hit.label(),
+					tuned ? BandMark.Style.TUNED : BandMark.Style.PRIMARY, false, false,
+					ch.centerIn(axis.startMHz, axis.endMHz), BandMark.LabelFit.DROP_IF_OVERLAP,
+					tuned ? 1f : hit.confidence));
+		}
+		if (!haveTuned && selectedKHz != null)
+		{
+			FmChannel ch = FmChannelPlan.findByCenterKHz(selectedKHz.intValue());
+			if (ch != null && ch.occupancyOverlaps(axis.startMHz, axis.endMHz))
+				out.add(0, new BandMark(ch.lowMHz(), ch.highMHz(), ch.centerMHz(), ch.label(), BandMark.Style.TUNED,
+						false, false, ch.centerIn(axis.startMHz, axis.endMHz), BandMark.LabelFit.DROP_IF_OVERLAP, 1f));
 		}
 		return out;
 	}
