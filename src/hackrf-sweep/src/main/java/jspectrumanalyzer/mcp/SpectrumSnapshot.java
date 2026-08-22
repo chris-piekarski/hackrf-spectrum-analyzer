@@ -256,6 +256,7 @@ public final class SpectrumSnapshot
 		public final List<FmHit> fmStations;
 		public final String radioMode;
 		public final int listenKHz;
+		public final int tvChannel;
 
 		public RadioContext(boolean paused, boolean released, double sweepsPerSec, String board, String serial,
 				String firmware, String usbApi, boolean present, int radioStartMHz, int radioEndMHz, int radioFftBinHz,
@@ -264,7 +265,7 @@ public final class SpectrumSnapshot
 		{
 			this(paused, released, sweepsPerSec, board, serial, firmware, usbApi, present, radioStartMHz, radioEndMHz,
 					radioFftBinHz, samples, lnaGain, vgaGain, antennaPower, antennaLna, clkout, selectedSerial, peaks,
-					autoScale, autoGain, fmStations, "sweep", 0);
+					autoScale, autoGain, fmStations, "sweep", 0, 0);
 		}
 
 		public RadioContext(boolean paused, boolean released, double sweepsPerSec, String board, String serial,
@@ -272,6 +273,17 @@ public final class SpectrumSnapshot
 				int samples, int lnaGain, int vgaGain, boolean antennaPower, boolean antennaLna, boolean clkout,
 				String selectedSerial, boolean peaks, boolean autoScale, boolean autoGain, List<FmHit> fmStations,
 				String radioMode, int listenKHz)
+		{
+			this(paused, released, sweepsPerSec, board, serial, firmware, usbApi, present, radioStartMHz, radioEndMHz,
+					radioFftBinHz, samples, lnaGain, vgaGain, antennaPower, antennaLna, clkout, selectedSerial, peaks,
+					autoScale, autoGain, fmStations, radioMode, listenKHz, 0);
+		}
+
+		public RadioContext(boolean paused, boolean released, double sweepsPerSec, String board, String serial,
+				String firmware, String usbApi, boolean present, int radioStartMHz, int radioEndMHz, int radioFftBinHz,
+				int samples, int lnaGain, int vgaGain, boolean antennaPower, boolean antennaLna, boolean clkout,
+				String selectedSerial, boolean peaks, boolean autoScale, boolean autoGain, List<FmHit> fmStations,
+				String radioMode, int listenKHz, int tvChannel)
 		{
 			this.paused = paused;
 			this.released = released;
@@ -297,6 +309,7 @@ public final class SpectrumSnapshot
 			this.fmStations = fmStations == null ? List.of() : List.copyOf(fmStations);
 			this.radioMode = radioMode == null || radioMode.isEmpty() ? "sweep" : radioMode;
 			this.listenKHz = listenKHz;
+			this.tvChannel = tvChannel;
 		}
 
 		public String identityJson()
@@ -318,6 +331,7 @@ public final class SpectrumSnapshot
 			sb.append('{');
 			Json.appendKey(sb, "radioMode").append(Json.quote(radioMode)).append(',');
 			Json.appendKey(sb, "listenMHz").append(Json.num(listenKHz / 1000f)).append(',');
+			Json.appendKey(sb, "tvChannel").append(tvChannel).append(',');
 			sb.append("\"radio\":{");
 			Json.appendKey(sb, "startMHz").append(radioStartMHz).append(',');
 			Json.appendKey(sb, "endMHz").append(radioEndMHz).append(',');

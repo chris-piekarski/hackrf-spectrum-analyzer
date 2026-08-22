@@ -9,6 +9,7 @@ import jspectrumanalyzer.core.AnalyzerSettings;
 import jspectrumanalyzer.core.FmBandLayer;
 import jspectrumanalyzer.core.FmStationHit;
 import jspectrumanalyzer.core.HackRFSettings;
+import jspectrumanalyzer.core.ListenService;
 import jspectrumanalyzer.core.RadioIdentity;
 import jspectrumanalyzer.core.RadioMode;
 import jspectrumanalyzer.core.SweepConfig;
@@ -33,6 +34,9 @@ public final class SpectrumSnapshotStore
 	private SpectrumSnapshot latest = SpectrumSnapshot.empty(0L);
 	private RadioContext context;
 	private long lastPublishMs;
+	private boolean tvLocked;
+	private float tvSnrDb;
+	private int tvPackets;
 
 	public SpectrumSnapshotStore()
 	{
@@ -100,11 +104,14 @@ public final class SpectrumSnapshotStore
 		boolean autoGain = settings.isAutoGain() != null && Boolean.TRUE.equals(settings.isAutoGain().getValue());
 		boolean listening = settings.isListening() != null && Boolean.TRUE.equals(settings.isListening().getValue());
 		int listenKHz = settings.getListenKHz() != null ? settings.getListenKHz().getValue() : 0;
-		String mode = RadioMode.from(released, listening).jsonName();
+		ListenService service = settings.getListenService() != null ? settings.getListenService().getValue()
+				: ListenService.FM;
+		int tvChannel = settings.getTvChannel() != null ? settings.getTvChannel().getValue() : 0;
+		String mode = RadioMode.from(released, listening, service).jsonName();
 		RadioContext next = new RadioContext(paused, released, sweepsPerSec, id.displayBoard(), id.shortSerial(),
 				id.displayFirmware(), id.usbApi, id.present, radio.startMHz, radio.endMHz, radio.fftBinHz, radio.samples,
 				radio.lnaGain, radio.vgaGain, radio.antennaPower, radio.antennaLna, radio.clkout, radio.serial, peaks,
-				auto, autoGain, fm, mode, listenKHz);
+				auto, autoGain, fm, mode, listenKHz, tvChannel);
 		synchronized (lock)
 		{
 			context = next;
@@ -115,6 +122,36 @@ public final class SpectrumSnapshotStore
 	public void publishContext(AnalyzerSettings settings, List<FmStationHit> stations, double sweepsPerSec)
 	{
 		publishContext((HackRFSettings) settings, stations, sweepsPerSec);
+	}
+
+	public void publishWatchStats(boolean locked, float snrDb, int packets)
+	{
+		synchronized (lock)
+		{
+			tvLocked = locked;
+			tvSnrDb = snrDb;
+			tvPackets = packets;
+		}
+	}
+
+	public String sweepConfigJson()
+	{
+		RadioContext ctx;
+		boolean locked;
+		float snr;
+		int pkts;
+		synchronized (lock)
+		{
+			ctx = context;
+			locked = tvLocked;
+			snr = tvSnrDb;
+			pkts = tvPackets;
+		}
+		String base = ctx.sweepConfigJson();
+		if (base == null || base.length() < 2 || base.charAt(base.length() - 1) != '}')
+			return base;
+		return base.substring(0, base.length() - 1) + String.format(Locale.US,
+				",\"tvLocked\":%s,\"tvSnrDb\":%.1f,\"tvPackets\":%d}", locked, snr, pkts);
 	}
 
 	public SpectrumSnapshot latest()

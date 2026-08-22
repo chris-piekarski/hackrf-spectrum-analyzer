@@ -8,16 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **TV watch** (ATSC 1.0): US ch **2–36** overlay and sidebar **Watch**. Parks the HackRF at 20 MS/s, demodulates 8VSB (vendored GNU Radio `gr-dtv`) to MPEG-TS, and shows MPEG-2 video (host `ffmpeg`) in the waterfall slot with AC-3 on the same Pulse/Java Sound sink as Listen. HUD is **ATSC lock** + SNR or **no ATSC lock**. MCP `sweep_config` reports `radioMode=watch` and `tvChannel`. Needs `ffmpeg` on `PATH`. HackRF is 8-bit — weak indoor VHF often will not lock; UHF 14–36 is the usual bet.
 - Sidebar and status bar **MCP** status: bind (`127.0.0.1:8765`), connected clients (from `initialize.clientInfo`), last tool, or **off** / **failed**.
-- **Listen**: park the HackRF on a US FM dial and play mono audio (click a **97.3** header tag or the Listen control). An analog-style **knob** jumps between detected stations (right = higher MHz). The tuned station is a gold cursor on the spectrum. The waterfall panel shows a live **audio** spectrum (0–16 kHz) of the demodulated FM. Stops the RF sweep; **Restart** or Listen again resumes it. MCP `sweep_config` reports `radioMode` and `listenMHz` (still read-only).
+- **Listen**: park the HackRF on a US FM dial and play mono audio (click a **97.3** header tag or the Listen control). An analog-style **knob** jumps between detected stations (right = higher MHz). The tuned station is a gold cursor on the spectrum. The waterfall panel shows a live **audio** spectrum (0–16 kHz) of the demodulated FM. Stops the RF sweep; **Restart** or Listen again resumes it. MCP `sweep_config` reports `radioMode` and `listenMHz`.
+- MCP write tools `fm_listen` (`mhz` 88.1–107.9) and `tv_watch` (`channel` 2–36) park the same exclusive RF path as the UI. `sweep_config` also reports `tvLocked` / `tvSnrDb` / `tvPackets`.
 - MCP `spectrum_occupancy` (emitters above noise+8 dB, width, optional Wi-Fi `ch N` label) and `spectrum_history` (ring of summaries, new series on MHz/FFT change). `spectrum_summary` now includes `occupiedFraction` and `emitterCount`.
 
 ### Changed
+- Watch keeps the **same waterfall strip and split** as Listen (**VIDEO · ±10 MHz** IQ at 20 MS/s). Decoded ATSC video is a 16:9 preview **under Watching ch N** in the TV tuner, not on the waterfall.
+- Window title is **Spectrum Analyzer** (board name stays in the sidebar).
 - Sweep range is one readout (type `88-108`, pan, zoom) instead of two Frequency start/end digit wheels. Quick Select and plot drag/scroll still set the same window.
 - Docs and GitHub about/topics present the app as an **MCP interface for AI agents** on a live HackRF sweep (same JVM as the GUI). New [docs/mcp.md](docs/mcp.md).
 - `src/hackrf-sweep` layout: Maven-standard Java tree (`src/main/{java,resources}`, `src/test/java`). Drop Eclipse CDT files, duplicate CSVs, unused Ant/JNAerator/32-bit/Zadig binaries. POM is indented, plugins version-pinned, `groupId` is `io.github.chris-piekarski`.
 
 ### Fixed
+- Watch 8VSB front-end matches GNU Radio `atsc_rx`: RRC (6 MHz vestigial) → FPLL → DC blocker (pilot) → AGC ref 4, then sync…RS. Analog capture is 20 MS/s / 10 MHz so the 6 MHz brick is not Nyquist-cropped. IQ preview paints on its own thread so a backed-up demod does not freeze the TV-tuner box.
+- Watch could park 8VSB and spawn `ffmpeg` without ever painting a frame: the equalizer started with all-zero taps (muted trellis), field-sync flushed the convolutional deinterleaver, and `ffmpeg` probed the first garbage packets with `discardcorrupt`. Center-tap init + keep deinterleaver + start decode after MPEG PAT.
+- Listen no longer slides the spectrum’s right-hand dB color bar: audio waterfall uses its own dBFS window; the RF palette stays on the plot axis.
 - Auto-gain was restarting the radio in a 32↔40 dB loop on Wi-Fi (quiet gap raised, a packet or a dropped burst reversed it). Each restart wiped the waterfall. Gain now only drops on real clip or a sustained hot streak; a disappeared burst is not treated as compression. The waterfall history is kept across gain-only retunes.
 
 ## [2.0.0] - 2026-08-19

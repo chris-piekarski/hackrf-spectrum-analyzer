@@ -43,9 +43,20 @@ class WaterfallPlotMathTest {
     }
 
     @Test
+    void audioDbfsWindowDoesNotUseTheRfPalette() {
+        assertEquals(-80, WaterfallPlot.AUDIO_PALETTE_START_DB, 0);
+        assertEquals(80, WaterfallPlot.AUDIO_PALETTE_SIZE_DB, 0);
+        assertTrue(WaterfallPlot.normalizePower(-12, WaterfallPlot.AUDIO_PALETTE_START_DB,
+                WaterfallPlot.AUDIO_PALETTE_SIZE_DB) > 0.80);
+        assertTrue(WaterfallPlot.normalizePower(-70, WaterfallPlot.AUDIO_PALETTE_START_DB,
+                WaterfallPlot.AUDIO_PALETTE_SIZE_DB) < 0.20);
+    }
+
+    @Test
     void modeBannerNamesRfAndAudio() {
         assertEquals("RF waterfall", WaterfallPlot.modeBanner(false));
         assertEquals("AUDIO  ·  0–16 kHz", WaterfallPlot.modeBanner(true));
+        assertEquals("VIDEO  ·  ±10 MHz", WaterfallPlot.modeBanner(false, true));
     }
 
     @Test

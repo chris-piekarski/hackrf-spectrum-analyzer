@@ -3,12 +3,11 @@ package jspectrumanalyzer.core;
 import java.util.Locale;
 
 /**
- * Exclusive USB use: one HackRF is either sweeping, parked as a WFM
- * receiver, or released.
+ * Exclusive USB use: sweep, parked FM listen, parked ATSC watch, or released.
  */
 public enum RadioMode
 {
-	SWEEP, LISTEN, STOPPED;
+	SWEEP, LISTEN, WATCH, STOPPED;
 
 	public String jsonName()
 	{
@@ -17,10 +16,17 @@ public enum RadioMode
 
 	public static RadioMode from(boolean released, boolean listening)
 	{
+		return from(released, listening, ListenService.FM);
+	}
+
+	public static RadioMode from(boolean released, boolean parked, ListenService service)
+	{
 		if (released)
 			return STOPPED;
-		if (listening)
-			return LISTEN;
-		return SWEEP;
+		if (!parked)
+			return SWEEP;
+		if (service == ListenService.TV)
+			return WATCH;
+		return LISTEN;
 	}
 }

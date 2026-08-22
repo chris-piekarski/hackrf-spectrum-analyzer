@@ -70,8 +70,10 @@ public class HackRFSweepSettingsUI extends JPanel
 	private JButton btnRestart;
 	private JButton btnStop;
 	private JButton btnListen;
+	private JButton btnWatch;
 	private StationKnob stationKnob;
 	private TunerPanel tunerPanel;
+	private TvTunerPanel tvTunerPanel;
 	private JSlider sliderVolume;
 	private JComboBox<String> comboRadio;
 	private JCheckBox checkBoxClkout;
@@ -150,6 +152,8 @@ public class HackRFSweepSettingsUI extends JPanel
 		btnListen = tunerPanel.listenButton();
 		stationKnob = tunerPanel.knob();
 		sliderVolume = tunerPanel.volumeSlider();
+		tvTunerPanel = new TvTunerPanel();
+		btnWatch = tvTunerPanel.watchButton();
 		ExclusiveToolTip.install(txtHackrfConnected);
 		ExclusiveToolTip.install(txtMcpStatus);
 		ExclusiveToolTip.install(comboRadio);
@@ -168,6 +172,7 @@ public class HackRFSweepSettingsUI extends JPanel
 		radioStrip.add(checkBoxClkout);
 		radioStrip.add(radioButtons);
 		radioStrip.add(tunerPanel);
+		radioStrip.add(tvTunerPanel);
 		radioStrip.add(btnPause);
 		panelMainSettings.add(radioStrip, "cell 0 4,growx");
 
@@ -423,12 +428,21 @@ public class HackRFSweepSettingsUI extends JPanel
 			refreshRadioCombo();
 		});
 		btnListen.addActionListener(e -> {
-			if (Boolean.TRUE.equals(hRF.isListening().getValue()))
+			if (Boolean.TRUE.equals(hRF.isListening().getValue())
+					&& hRF.getListenService().getValue() == jspectrumanalyzer.core.ListenService.FM)
 				hRF.stopListen();
 			else
 				hRF.startListen();
 		});
+		btnWatch.addActionListener(e -> {
+			if (Boolean.TRUE.equals(hRF.isListening().getValue())
+					&& hRF.getListenService().getValue() == jspectrumanalyzer.core.ListenService.TV)
+				hRF.stopListen();
+			else
+				hRF.startWatch();
+		});
 		new MVCController(sliderVolume, hRF.getListenVolume());
+		new MVCController(tvTunerPanel.volumeSlider(), hRF.getListenVolume());
 		tunerPanel.setOnTune(dir -> {
 			jspectrumanalyzer.core.FmChannel next = jspectrumanalyzer.core.FmStationDial.tune(
 					hRF.getListenKHz().getValue(), dir);
@@ -441,17 +455,35 @@ public class HackRFSweepSettingsUI extends JPanel
 			if (next.centerKHz != hRF.getListenKHz().getValue())
 				hRF.getListenKHz().setValue(next.centerKHz);
 		});
+		tvTunerPanel.setOnTune(dir -> {
+			jspectrumanalyzer.core.TvChannel next = jspectrumanalyzer.core.TvStationDial.tune(
+					hRF.getTvChannel().getValue(), dir);
+			if (next.fccChannel != hRF.getTvChannel().getValue())
+				hRF.getTvChannel().setValue(next.fccChannel);
+		});
+		tvTunerPanel.setOnSeek(dir -> {
+			jspectrumanalyzer.core.TvChannel next = jspectrumanalyzer.core.TvStationDial.seek(
+					hRF.getDetectedTvStations().getValue(), hRF.getTvChannel().getValue(), dir);
+			if (next.fccChannel != hRF.getTvChannel().getValue())
+				hRF.getTvChannel().setValue(next.fccChannel);
+		});
 		Runnable syncListen = () -> {
-			boolean listen = Boolean.TRUE.equals(hRF.isListening().getValue());
+			boolean parked = Boolean.TRUE.equals(hRF.isListening().getValue());
 			boolean released = Boolean.TRUE.equals(hRF.isRadioReleased().getValue());
+			boolean fm = parked && hRF.getListenService().getValue() == jspectrumanalyzer.core.ListenService.FM;
+			boolean tv = parked && hRF.getListenService().getValue() == jspectrumanalyzer.core.ListenService.TV;
 			int kHz = hRF.getListenKHz().getValue();
 			tunerPanel.setKHz(kHz);
-			tunerPanel.setListening(listen);
+			tunerPanel.setListening(fm);
 			tunerPanel.setStations(hRF.getDetectedFmStations().getValue());
-			btnPause.setEnabled(!listen && !released);
+			tvTunerPanel.setChannel(hRF.getTvChannel().getValue());
+			tvTunerPanel.setWatching(tv);
+			btnPause.setEnabled(!parked && !released);
 		};
 		hRF.isListening().addListener(() -> SwingUtilities.invokeLater(syncListen));
+		hRF.getListenService().addListener(s -> SwingUtilities.invokeLater(syncListen));
 		hRF.getListenKHz().addListener(() -> SwingUtilities.invokeLater(syncListen));
+		hRF.getTvChannel().addListener(ch -> SwingUtilities.invokeLater(syncListen));
 		hRF.getDetectedFmStations().addListener(hits -> SwingUtilities.invokeLater(() -> tunerPanel.setStations(hits)));
 		syncListen.run();
 		new MVCController(checkBoxClkout, hRF.getClkoutEnable());
@@ -574,6 +606,14 @@ public class HackRFSweepSettingsUI extends JPanel
 
 	JButton listenButton() {
 		return btnListen;
+	}
+
+	JButton watchButton() {
+		return btnWatch;
+	}
+
+	public TvTunerPanel tvTunerPanel() {
+		return tvTunerPanel;
 	}
 
 	StationKnob stationKnob() {

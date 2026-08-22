@@ -41,7 +41,18 @@ public final class SpectrumMcpServer
 
 	public SpectrumMcpServer(SpectrumSnapshotStore store)
 	{
-		this.tools = new SpectrumMcpTools(store);
+		this(store, null, null);
+	}
+
+	public SpectrumMcpServer(SpectrumSnapshotStore store, SpectrumMcpTools.TvWatchHook tvWatch)
+	{
+		this(store, tvWatch, null);
+	}
+
+	public SpectrumMcpServer(SpectrumSnapshotStore store, SpectrumMcpTools.TvWatchHook tvWatch,
+			SpectrumMcpTools.FmListenHook fmListen)
+	{
+		this.tools = new SpectrumMcpTools(store, tvWatch, fmListen);
 	}
 
 	public SpectrumMcpTools tools()

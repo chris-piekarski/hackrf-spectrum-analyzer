@@ -12,13 +12,39 @@ public final class SpectrumMcpTools
 	public static final String SERVER_NAME = "hackrf-spectrum-analyzer";
 	public static final String SERVER_VERSION = "2.0.0";
 
+	@FunctionalInterface
+	public interface TvWatchHook
+	{
+		void watch(int fccChannel);
+	}
+
+	@FunctionalInterface
+	public interface FmListenHook
+	{
+		void listen(double mhz);
+	}
+
 	private final SpectrumSnapshotStore store;
+	private final TvWatchHook tvWatch;
+	private final FmListenHook fmListen;
 
 	public SpectrumMcpTools(SpectrumSnapshotStore store)
+	{
+		this(store, null, null);
+	}
+
+	public SpectrumMcpTools(SpectrumSnapshotStore store, TvWatchHook tvWatch)
+	{
+		this(store, tvWatch, null);
+	}
+
+	public SpectrumMcpTools(SpectrumSnapshotStore store, TvWatchHook tvWatch, FmListenHook fmListen)
 	{
 		if (store == null)
 			throw new IllegalArgumentException("store");
 		this.store = store;
+		this.tvWatch = tvWatch;
+		this.fmListen = fmListen;
 	}
 
 	public SpectrumSnapshotStore store()
@@ -47,7 +73,7 @@ public final class SpectrumMcpTools
 						"{\"type\":\"object\",\"properties\":{}}")
 				+ ","
 				+ tool("sweep_config",
-						"Armed radio settings (range, FFT, gain, CLKOUT), radioMode (sweep|listen|stopped), listenMHz, plus display flags.",
+						"Armed radio settings (range, FFT, gain, CLKOUT), radioMode (sweep|listen|watch|stopped), listenMHz, tvChannel, plus display flags.",
 						"{\"type\":\"object\",\"properties\":{}}")
 				+ ","
 				+ tool("fm_stations",
@@ -62,6 +88,16 @@ public final class SpectrumMcpTools
 						"Recent summaries from the snapshot ring (not full bins). Optional seconds and maxSamples.",
 						"{\"type\":\"object\",\"properties\":{\"seconds\":{\"type\":\"number\",\"minimum\":0.1},"
 								+ "\"maxSamples\":{\"type\":\"integer\",\"minimum\":1}}}")
+				+ ","
+				+ tool("tv_watch",
+						"Park the HackRF on a US ATSC 1.0 channel (2-36) and start Watch. Same exclusive RF path as the UI.",
+						"{\"type\":\"object\",\"properties\":{\"channel\":{\"type\":\"integer\",\"minimum\":2,\"maximum\":36}},"
+								+ "\"required\":[\"channel\"]}")
+				+ ","
+				+ tool("fm_listen",
+						"Park the HackRF on a US FM dial (88.1-107.9 MHz, 200 kHz raster) and start Listen. Same exclusive RF path as the UI.",
+						"{\"type\":\"object\",\"properties\":{\"mhz\":{\"type\":\"number\",\"minimum\":88.1,\"maximum\":107.9}},"
+								+ "\"required\":[\"mhz\"]}")
 				+ "]}";
 	}
 
@@ -78,7 +114,11 @@ public final class SpectrumMcpTools
 		if ("radio_identity".equals(name))
 			return textResult(store.context().identityJson(), false);
 		if ("sweep_config".equals(name))
-			return textResult(store.context().sweepConfigJson(), false);
+			return textResult(store.sweepConfigJson(), false);
+		if ("tv_watch".equals(name))
+			return tvWatchCall(args);
+		if ("fm_listen".equals(name))
+			return fmListenCall(args);
 		if ("fm_stations".equals(name))
 			return textResult(store.context().fmStationsJson(), false);
 		if ("spectrum_occupancy".equals(name))
@@ -126,6 +166,32 @@ public final class SpectrumMcpTools
 			}
 		}
 		return McpJson.rpcError(id, -32601, "method not found: " + method);
+	}
+
+	private String tvWatchCall(Map<String, Object> args)
+	{
+		if (tvWatch == null)
+			throw new IllegalArgumentException("tv_watch is not bound");
+		Integer ch = McpJson.getInt(args, "channel");
+		if (ch == null)
+			throw new IllegalArgumentException("tv_watch requires channel");
+		jspectrumanalyzer.core.TvChannel plan = jspectrumanalyzer.core.TvChannelPlan.clamp(ch.intValue());
+		tvWatch.watch(plan.fccChannel);
+		return textResult("{\"ok\":true,\"tvChannel\":" + plan.fccChannel + ",\"centerMHz\":" + plan.centerMHz() + "}",
+				false);
+	}
+
+	private String fmListenCall(Map<String, Object> args)
+	{
+		if (fmListen == null)
+			throw new IllegalArgumentException("fm_listen is not bound");
+		Double mhz = McpJson.getDouble(args, "mhz");
+		if (mhz == null)
+			throw new IllegalArgumentException("fm_listen requires mhz");
+		jspectrumanalyzer.core.FmChannel ch = jspectrumanalyzer.core.FmChannelPlan.clamp(mhz.doubleValue());
+		fmListen.listen(ch.centerMHz());
+		return textResult(String.format(java.util.Locale.US,
+				"{\"ok\":true,\"listenMHz\":%.1f,\"listenKHz\":%d}", ch.centerMHz(), ch.centerKHz), false);
 	}
 
 	private String occupancyCall()

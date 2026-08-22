@@ -134,6 +134,25 @@ class HackRFSweepSettingsUITest {
     }
 
     @Test
+    void watchButtonParksAsTvWithoutRelease() throws Exception {
+        FakeHackRFSettings settings = new FakeHackRFSettings();
+        HackRFSweepSettingsUI ui = new HackRFSweepSettingsUI(settings);
+        flushEdt();
+        assertEquals("Watch", ui.watchButton().getText());
+        SwingUtilities.invokeAndWait(() -> ui.watchButton().doClick());
+        flushEdt();
+        assertEquals(1, settings.startWatchCalls);
+        assertTrue(settings.isListening().getValue());
+        assertEquals(jspectrumanalyzer.core.ListenService.TV, settings.getListenService().getValue());
+        assertTrue(ui.watchButton().getText().contains("Watching"));
+        assertNotNull(ui.tvTunerPanel().previewPanel());
+        assertEquals(90, ui.tvTunerPanel().previewPanel().getMinimumSize().height);
+        SwingUtilities.invokeAndWait(() -> ui.watchButton().doClick());
+        flushEdt();
+        assertFalse(settings.isListening().getValue());
+    }
+
+    @Test
     void stationKnobJumpsBetweenDetectedStations() throws Exception {
         FakeHackRFSettings settings = new FakeHackRFSettings();
         settings.getDetectedFmStations().setValue(java.util.List.of(

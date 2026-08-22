@@ -43,6 +43,26 @@ lib/hackrf/host/libhackrf/src/hackrf.c \
 lib/hackrf/host/hackrf-tools/src/hackrf_sweep.c \
 src-c/hackrf_fm.c
 
+ATSC_CC= \
+src-c/atsc/lib/atsc_plinfo.cc \
+src-c/atsc/lib/atsc_fpll_impl.cc \
+src-c/atsc/lib/atsc_sync_impl.cc \
+src-c/atsc/lib/atsc_fs_checker_impl.cc \
+src-c/atsc/lib/atsc_equalizer_impl.cc \
+src-c/atsc/lib/atsc_viterbi_decoder_impl.cc \
+src-c/atsc/lib/atsc_single_viterbi.cc \
+src-c/atsc/lib/atsc_deinterleaver_impl.cc \
+src-c/atsc/lib/atsc_rs_decoder_impl.cc \
+src-c/atsc/lib/atsc_derandomizer_impl.cc \
+src-c/atsc/lib/atsc_randomize.cc \
+src-c/atsc/atsc_pipeline.cpp
+
+ATSC_C= \
+src-c/atsc/fec/init_rs_char.c \
+src-c/atsc/fec/decode_rs_char.c
+
+ATSC_INCLUDES= -Isrc-c/atsc/shim -Isrc-c/atsc/lib -Isrc-c/atsc/fec -Isrc-c/atsc
+
 INCLUDE_PATHS= -Ilib/hackrf/host/libhackrf/src -I$(LIBUSB_DIR)/include/libusb-1.0 -Ilib/fftw-3.3.5-dll64
 LIBUSB_DIR= lib/libusb-1.0.21
 MAIN_JAR= $(OUTPUT_PATH)/lib/hackrf_sweep_spectrum_analyzer.jar
@@ -51,6 +71,8 @@ OBJECT_SUFFIX= o
 OBJECT_SUFFIX_WIN= ow
  
 OBJECTS= $(addsuffix .$(OBJECT_SUFFIX), $(addprefix $(BUILD_PATH)/, $(SOURCES)))
+OBJECTS_ATSC= $(addsuffix .$(OBJECT_SUFFIX), $(addprefix $(BUILD_PATH)/, $(ATSC_CC))) \
+	$(addsuffix .$(OBJECT_SUFFIX), $(addprefix $(BUILD_PATH)/, $(ATSC_C)))
 OBJECTS_WIN= $(addsuffix .$(OBJECT_SUFFIX_WIN), $(addprefix $(BUILD_PATH)/, $(SOURCES)))
 
 HACKRF_SDK_PIN= v2026.01.3
@@ -112,7 +134,7 @@ all: patch_hackrf prepare $(MAIN_JAR) $(DLL_LIB) zip_file ## Build everything (p
 .PHONY: dirs
 dirs: ## (internal) create object directories
 	@echo "Creating directories"
-	@mkdir -p $(dir $(OBJECTS))
+	@mkdir -p $(dir $(OBJECTS)) $(dir $(OBJECTS_ATSC))
 
 $(MAIN_JAR): ## (internal) build the fat jar via Maven
 	mvn clean compile assembly:single
@@ -155,14 +177,23 @@ $(DLL_LIB_WIN): $(OBJECTS_WIN)
 	x86_64-w64-mingw32-strip --strip-unneeded $(DLL_LIB_WIN)
 	echo "---- Building windows version [done ] ----"
 
-$(DLL_LIB):  $(OBJECTS)
+$(DLL_LIB):  $(OBJECTS) $(OBJECTS_ATSC)
 	echo "---- Building linux version [start] ----"
-	$(CXX) $(LDFLAGS) $(LDPATHS) $(OBJECTS) -o $(DLL_LIB) $(LDLIBS)
+	$(CXX) $(LDFLAGS) $(LDPATHS) $(OBJECTS) $(OBJECTS_ATSC) -o $(DLL_LIB) $(LDLIBS)
 	strip --strip-unneeded $(DLL_LIB)
 	echo "---- Building linux version [done ] ----"
 
 $(BUILD_PATH)/%.c.$(OBJECT_SUFFIX): %.c
-	$(CC) $(CFLAGS) $(INCLUDE_PATHS)  $< -o $@
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(INCLUDE_PATHS) $(ATSC_INCLUDES) $< -o $@
+
+$(BUILD_PATH)/%.cc.$(OBJECT_SUFFIX): %.cc
+	@mkdir -p $(dir $@)
+	$(CXX) $(CFLAGS) -DNDEBUG -std=c++17 $(INCLUDE_PATHS) $(ATSC_INCLUDES) $< -o $@
+
+$(BUILD_PATH)/%.cpp.$(OBJECT_SUFFIX): %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CFLAGS) -DNDEBUG -std=c++17 $(INCLUDE_PATHS) $(ATSC_INCLUDES) $< -o $@
 
 $(BUILD_PATH)/%.c.$(OBJECT_SUFFIX_WIN): %.c
 	$(CC_WIN) $(CFLAGS_WIN) $(INCLUDE_PATHS_WIN)  $< -o $@

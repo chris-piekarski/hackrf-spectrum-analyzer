@@ -13,6 +13,7 @@ Living implementation plans live here so later work (and agents) can pick them u
 
 | Plan | Notes |
 |---|---|
+| [ATSC 1.0 TV watch](atsc-tv-watch.md) | In progress 2026-08-21. 8VSB + ffmpeg video in the waterfall slot; hardware IT still open. |
 | [FM radio tuner](fm-radio-tuner.md) | In progress 2026-08-20. Listen mode stops the sweep; mono WFM via HackRF IQ. |
 
 ## Done

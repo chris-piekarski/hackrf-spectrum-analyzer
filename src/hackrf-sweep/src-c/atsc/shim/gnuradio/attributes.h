@@ -1,0 +1,5 @@
+#ifndef ATSC_SHIM_ATTRIBUTES_H
+#define ATSC_SHIM_ATTRIBUTES_H
+#define __GR_ATTR_EXPORT
+#define __GR_ATTR_IMPORT
+#endif

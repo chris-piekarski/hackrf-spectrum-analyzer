@@ -2,6 +2,7 @@ package jspectrumanalyzer;
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -118,6 +119,8 @@ import jspectrumanalyzer.ui.HackRFSweepSettingsUI;
 import jspectrumanalyzer.ui.ListenHud;
 import jspectrumanalyzer.ui.SweepStatusBar;
 import jspectrumanalyzer.ui.WaterfallPlot;
+import jspectrumanalyzer.ui.TvVideoPanel;
+import jspectrumanalyzer.ui.WatchHud;
 import jspectrumanalyzer.ui.FmChannelOverlay;
 import jspectrumanalyzer.ui.QuickSelectBandOverlay;
 import jspectrumanalyzer.ui.SpectrumZoomOverlay;
@@ -202,6 +205,9 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 	private volatile List<FmStationHit>				fmStations							= List.of();
 	private final FmStationTracker					fmTracker							= new FmStationTracker();
+	private volatile List<jspectrumanalyzer.core.TvStationHit> tvStations = List.of();
+	private final jspectrumanalyzer.core.TvStationTracker tvTracker = new jspectrumanalyzer.core.TvStationTracker();
+	private final jspectrumanalyzer.core.TvWatchEngine tvEngine = new jspectrumanalyzer.core.TvWatchEngine();
 	private final SpectrumZoomHistory				spectrumZoomHistory					= new SpectrumZoomHistory();
 	private final SpectrumZoomOverlay				spectrumZoomOverlay					= new SpectrumZoomOverlay();
 	private boolean									applyingSpectrumZoom;
@@ -224,6 +230,11 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private ValueMarker								waterfallPaletteEndMarker;
 	private ValueMarker								waterfallPaletteStartMarker;
 	private WaterfallPlot							waterfallPlot;
+	private TvVideoPanel							tvVideoPanel;
+	private CardLayout								bottomPlots;
+	private JPanel									bottomPlotHost;
+	private JSplitPane								splitPane;
+	private HackRFSweepSettingsUI					settingsPanel;
 	private JLabel labelMessages;
 	private SweepStatusBar sweepStatusBar;
 	private final FmListenEngine fmEngine = new FmListenEngine();
@@ -248,6 +259,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				HackRFSweepNativeBridge.stop();
 				HackRFFmNativeBridge.stop();
 				fmEngine.stop();
+				tvEngine.stop();
 				if (threadHackrfSweep != null) {
 					try {
 						threadHackrfSweep.join(2000);
@@ -260,6 +272,12 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 
 			@Override
 			public void startListen() {
+				radioApplyTimer.stop();
+				restartHackrfSweep();
+			}
+
+			@Override
+			public void startWatch() {
 				radioApplyTimer.stop();
 				restartHackrfSweep();
 			}
@@ -306,12 +324,17 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		printInit(2);
 
 		refreshRadioIdentity();
-		HackRFSweepSettingsUI settingsPanel = new HackRFSweepSettingsUI(settings);
+		settingsPanel = new HackRFSweepSettingsUI(settings);
 
 		printInit(3);
 		
 		
-		JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, chartPanel, waterfallPlot);
+		tvVideoPanel = new TvVideoPanel();
+		bottomPlots = new CardLayout();
+		bottomPlotHost = new JPanel(bottomPlots);
+		bottomPlotHost.add(waterfallPlot, "rf");
+		bottomPlotHost.add(tvVideoPanel, "tv");
+		splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, chartPanel, bottomPlotHost);
 		splitPane.setResizeWeight(0.8);
 		splitPane.setBorder(null);
 
@@ -330,10 +353,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		uiFrame.setUndecorated(captureGIF);
 		uiFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		uiFrame.setLayout(new BorderLayout());
-		RadioIdentity bootId = settings.getRadioIdentity().getValue();
-		uiFrame.setTitle(bootId != null && bootId.present
-				? "Spectrum Analyzer — " + bootId.displayBoard()
-				: "Spectrum Analyzer");
+		uiFrame.setTitle("Spectrum Analyzer");
 		((javax.swing.JComponent) uiFrame.getContentPane()).setBorder(BorderFactory.createEmptyBorder(8, 8, 16, 8));
 		uiFrame.add(splitPanePanel, BorderLayout.CENTER);
 		uiFrame.setResizable(true);
@@ -516,8 +536,41 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	private void ensureMcpServer() {
 		if (mcpServer != null)
 			return;
-		mcpServer = new jspectrumanalyzer.mcp.SpectrumMcpServer(snapshotStore);
+		mcpServer = new jspectrumanalyzer.mcp.SpectrumMcpServer(snapshotStore, ch -> {
+			runOnEdt(() -> {
+				settings.getTvChannel().setValue(ch);
+				settings.startWatch();
+			});
+		}, mhz -> {
+			runOnEdt(() -> {
+				FmChannel ch = FmChannelPlan.clamp(mhz);
+				settings.getListenKHz().setValue(ch.centerKHz);
+				settings.startListen();
+			});
+		});
 		mcpServer.addStatusListener(s -> settings.getMcpStatus().setValue(s));
+	}
+
+	private static void runOnEdt(Runnable tune)
+	{
+		if (SwingUtilities.isEventDispatchThread())
+			tune.run();
+		else
+		{
+			try
+			{
+				SwingUtilities.invokeAndWait(tune);
+			}
+			catch (InterruptedException e)
+			{
+				Thread.currentThread().interrupt();
+			}
+			catch (InvocationTargetException e)
+			{
+				throw new IllegalArgumentException(
+						e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+			}
+		}
 	}
 
 	@Override
@@ -528,6 +581,11 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	@Override
 	public void startListen() {
 		settings.startListen();
+	}
+
+	@Override
+	public void startWatch() {
+		settings.startWatch();
 	}
 
 	@Override
@@ -548,6 +606,21 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 	@Override
 	public ModelValueInt getListenVolume() {
 		return settings.getListenVolume();
+	}
+
+	@Override
+	public ModelValue<jspectrumanalyzer.core.ListenService> getListenService() {
+		return settings.getListenService();
+	}
+
+	@Override
+	public ModelValueInt getTvChannel() {
+		return settings.getTvChannel();
+	}
+
+	@Override
+	public ModelValue<java.util.List<jspectrumanalyzer.core.TvStationHit>> getDetectedTvStations() {
+		return settings.getDetectedTvStations();
 	}
 
 	@Override
@@ -707,11 +780,6 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			identity = RadioIdentity.ABSENT;
 		}
 		settings.getRadioIdentity().setValue(identity);
-		if (uiFrame != null) {
-			String title = identity.present ? "Spectrum Analyzer — " + identity.displayBoard() : "Spectrum Analyzer";
-			final String frameTitle = title;
-			SwingUtilities.invokeLater(() -> uiFrame.setTitle(frameTitle));
-		}
 	}
 
 	private void fireHardwareStateChanged(boolean sendingData) {
@@ -729,6 +797,12 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		if (FmStationDial.sameChannels(settings.getDetectedFmStations().getValue(), hits))
 			return;
 		settings.getDetectedFmStations().setValue(hits == null ? java.util.List.of() : java.util.List.copyOf(hits));
+	}
+
+	private void publishDetectedTvStations(java.util.List<jspectrumanalyzer.core.TvStationHit> hits) {
+		if (jspectrumanalyzer.core.TvStationDial.sameChannels(settings.getDetectedTvStations().getValue(), hits))
+			return;
+		settings.getDetectedTvStations().setValue(hits == null ? java.util.List.of() : java.util.List.copyOf(hits));
 	}
 
 	private void printInit(int initNumber) {
@@ -768,6 +842,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			datasetSpectrum = ds;
 			if (axisChanged) {
 				fmTracker.reset();
+				tvTracker.reset();
 				powerScale = null;
 				if (waterfallPlot != null)
 					waterfallPlot.clearHistory();
@@ -778,6 +853,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				java.util.List<FmStationHit> hits = fmTracker.update(ds, live.getStartMHz(), live.getEndMHz());
 				fmStations = hits;
 				publishDetectedStations(hits);
+				tvStations = tvTracker.update(ds, live.getStartMHz(), live.getEndMHz());
+				publishDetectedTvStations(tvStations);
 				snapshotStore.publishSweep(jspectrumanalyzer.mcp.SpectrumSnapshot.fromDataset(ds, nowMs,
 						jspectrumanalyzer.mcp.SpectrumSnapshot.DEFAULT_MAX_POINTS, null), nowMs);
 				double sps = waterfallPlot != null ? waterfallPlot.getFps() : 0;
@@ -797,6 +874,8 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			FrequencyRange sweepRange = getFreq();
 			fmStations = fmTracker.update(ds, sweepRange.getStartMHz(), sweepRange.getEndMHz());
 			publishDetectedStations(fmStations);
+			tvStations = tvTracker.update(ds, sweepRange.getStartMHz(), sweepRange.getEndMHz());
+			publishDetectedTvStations(tvStations);
 			considerAutoGain(ds, sweepRange);
 
 			if (System.currentTimeMillis() - perfWatch.lastStatisticsRefreshed > 1000) {
@@ -968,13 +1047,16 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 				threadLaunchCommands.peek() != null))
 			return;
 		final boolean listen = settings.isListening().getValue();
+		final boolean watch = listen && settings.getListenService().getValue() == jspectrumanalyzer.core.ListenService.TV;
 		threadHackrfSweep = new Thread(() -> {
-			Thread.currentThread().setName(listen ? "hackrf_fm" : "hackrf_sweep");
+			Thread.currentThread().setName(watch ? "hackrf_tv" : (listen ? "hackrf_fm" : "hackrf_sweep"));
 			try {
 				forceStopSweep = false;
 				if (sweepEngine != null)
 					sweepEngine.clearStop();
-				if (listen)
+				if (watch)
+					runTvWatch();
+				else if (listen)
 					runFmListen();
 				else
 					sweep();
@@ -1132,8 +1214,16 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 						range.getStartMHz(), range.getEndMHz());
 				FmChannelOverlay.paint(g2, area, xy.getDomainAxis(), xy.getDomainAxisEdge(),
 						range.getStartMHz(), range.getEndMHz(), fmStations, settings.getListenKHz().getValue());
+				jspectrumanalyzer.ui.TvChannelOverlay.paint(g2, area, xy.getDomainAxis(), xy.getDomainAxisEdge(),
+						range.getStartMHz(), range.getEndMHz(), tvStations, settings.getTvChannel().getValue());
 				if (settings.isListening().getValue())
-					ListenHud.paint(g2, area, settings.getListenKHz().getValue() / 1000.0, fmAudioOk);
+				{
+					if (settings.getListenService().getValue() == jspectrumanalyzer.core.ListenService.TV)
+						WatchHud.paint(g2, area, settings.getTvChannel().getValue(), tvEngine.locked(),
+								tvEngine.snrDb());
+					else
+						ListenHud.paint(g2, area, settings.getListenKHz().getValue() / 1000.0, fmAudioOk);
+				}
 				spectrumZoomOverlay.paint(g2, area);
 			}
 
@@ -1327,15 +1417,27 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			return;
 		FrequencyRange range = getFreq();
 		FrequencyAxis axis = FrequencyAxis.fromArea(area, range.getStartMHz(), range.getEndMHz());
-		java.util.List<BandMark> marks = FmBandLayer.marks(axis, fmStations, settings.getListenKHz().getValue());
-		BandMark hit = BandHeaderPainter.hitTest(e.getX(), e.getY(), area, axis, marks);
-		if (hit == null)
+		java.util.List<BandMark> fmMarks = FmBandLayer.marks(axis, fmStations, settings.getListenKHz().getValue());
+		BandMark fmHit = BandHeaderPainter.hitTest(e.getX(), e.getY(), area, axis, fmMarks);
+		if (fmHit != null)
+		{
+			FmChannel ch = FmChannelPlan.nearest(fmHit.labelMHz);
+			if (ch == null)
+				return;
+			settings.getListenKHz().setValue(ch.centerKHz);
+			settings.startListen();
 			return;
-		FmChannel ch = FmChannelPlan.nearest(hit.labelMHz);
-		if (ch == null)
+		}
+		java.util.List<BandMark> tvMarks = jspectrumanalyzer.core.TvBandLayer.marks(axis, tvStations,
+				settings.getTvChannel().getValue());
+		BandMark tvHit = BandHeaderPainter.hitTest(e.getX(), e.getY(), area, axis, tvMarks);
+		if (tvHit == null)
 			return;
-		settings.getListenKHz().setValue(ch.centerKHz);
-		settings.startListen();
+		jspectrumanalyzer.core.TvChannel tv = jspectrumanalyzer.core.TvChannelPlan.containingMHz(tvHit.labelMHz);
+		if (tv == null)
+			return;
+		settings.getTvChannel().setValue(tv.fccChannel);
+		settings.startWatch();
 	}
 
 	private Rectangle2D plotArea() {
@@ -1426,13 +1528,25 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		settings.getSelectedSerial().addListener(restartHackrf);
 		settings.getClkoutEnable().addListener(restartHackrf);
 		settings.getListenKHz().addListener(() -> {
-			if (settings.isListening().getValue())
+			if (settings.isListening().getValue()
+					&& settings.getListenService().getValue() == jspectrumanalyzer.core.ListenService.FM)
 				restartHackrfSweep();
 			snapshotStore.publishContext(settings, fmStations, 0);
 			if (chartPanel != null)
 				SwingUtilities.invokeLater(chartPanel::repaint);
 		});
-		settings.getListenVolume().addListener(v -> fmEngine.setVolume(v));
+		settings.getTvChannel().addListener(() -> {
+			if (settings.isListening().getValue()
+					&& settings.getListenService().getValue() == jspectrumanalyzer.core.ListenService.TV)
+				restartHackrfSweep();
+			snapshotStore.publishContext(settings, fmStations, 0);
+			if (chartPanel != null)
+				SwingUtilities.invokeLater(chartPanel::repaint);
+		});
+		settings.getListenVolume().addListener(v -> {
+			fmEngine.setVolume(v);
+			tvEngine.setVolume(v);
+		});
 		settings.isListening().addListener(() -> {
 			snapshotStore.publishContext(settings, fmStations, 0);
 			if (chartPanel != null)
@@ -1587,6 +1701,98 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 		threadLauncher.start();
 	}
 
+	private void showBottom(String card) {
+		if (bottomPlots == null || bottomPlotHost == null)
+			return;
+		Runnable r = () -> {
+			bottomPlots.show(bottomPlotHost, card);
+			bottomPlotHost.revalidate();
+			bottomPlotHost.repaint();
+		};
+		if (SwingUtilities.isEventDispatchThread())
+			r.run();
+		else
+			SwingUtilities.invokeLater(r);
+	}
+
+	private void runTvWatch() {
+		jspectrumanalyzer.core.TvChannel ch = jspectrumanalyzer.core.TvChannelPlan
+				.clamp(settings.getTvChannel().getValue());
+		long loHz = ch.centerHz();
+		showBottom("rf");
+		waterfallPlot.setVideoMode(true, loHz);
+		tvEngine.setVolume(settings.getListenVolume().getValue());
+		final long[] lastRowMs = { 0L };
+		tvEngine.setSpectrumListener(row -> {
+			long now = System.currentTimeMillis();
+			if (now - lastRowMs[0] < 33)
+				return;
+			lastRowMs[0] = now;
+			waterfallPlot.addVideoFrame(row, jspectrumanalyzer.core.IqSpectrum.DISPLAY_HZ, loHz);
+			waterfallPlot.repaint();
+			float peak = -150f;
+			for (int i = 0; i < row.length; i++)
+			{
+				if (row[i] > peak)
+					peak = row[i];
+			}
+			final float peakDb = peak;
+			final int bins = row.length;
+			SwingUtilities.invokeLater(() -> {
+				if (sweepStatusBar != null && settings.isListening().getValue())
+					sweepStatusBar.setSweepInfo(jspectrumanalyzer.core.IqSpectrum.BIN_HZ, bins,
+							waterfallPlot.getFps(), Double.valueOf(peakDb), false, true);
+			});
+		});
+		AudioSink sink = AudioSinks.openPlayback();
+		tvEngine.start(img -> {
+			SwingUtilities.invokeLater(() -> {
+				if (settingsPanel != null)
+					settingsPanel.tvTunerPanel().setPreviewFrame(img);
+			});
+		}, sink);
+		javax.swing.Timer hud = new javax.swing.Timer(200, e -> {
+			boolean locked = tvEngine.locked();
+			float snr = tvEngine.snrDb();
+			snapshotStore.publishWatchStats(locked, snr, tvEngine.packets());
+			if (settingsPanel != null)
+				settingsPanel.tvTunerPanel().setPreviewStatus(WatchHud.text(ch.fccChannel, locked, snr,
+						tvEngine.packets(), tvEngine.frames(), tvEngine.previewFrames()));
+			if (chartPanel != null)
+				chartPanel.repaint();
+		});
+		hud.start();
+		snapshotStore.publishContext(settings, fmStations, 0);
+		if (chartPanel != null)
+			SwingUtilities.invokeLater(chartPanel::repaint);
+		try {
+			int lna = settings.getGainLNA().getValue();
+			int vga = settings.getGainVGA().getValue();
+			if (settings.isAutoGain().getValue())
+			{
+				int seed = AutoGainPolicy.seedGain(ch.lowMHz, ch.highMHz()) + 32;
+				int total = Math.max(settings.getGain().getValue(), seed);
+				lna = GainPolicy.lnaGain(total);
+				vga = GainPolicy.vgaGain(total);
+			}
+			System.err.println("ATSC watch: ch " + ch.fccChannel + " LO " + loHz + " Hz LNA " + lna
+					+ " VGA " + vga);
+			HackRFFmNativeBridge.configure(settings.getSelectedSerial().getValue(),
+					settings.getClkoutEnable().getValue());
+			HackRFFmNativeBridge.start(iq -> tvEngine.offerIq(iq), loHz,
+					jspectrumanalyzer.core.TvChannelPlan.IQ_RATE_HZ, lna, vga,
+					settings.getAntennaPowerEnable().getValue(), settings.getAntennaLNA().getValue());
+		} finally {
+			hud.stop();
+			tvEngine.setSpectrumListener(null);
+			tvEngine.stop();
+			waterfallPlot.setVideoMode(false, 0);
+			if (settingsPanel != null)
+				SwingUtilities.invokeLater(() -> settingsPanel.tvTunerPanel().setWatching(false));
+			showBottom("rf");
+		}
+	}
+
 	private void runFmListen() {
 		FmChannel ch = FmChannelPlan.clamp(settings.getListenKHz().getValue() / 1000.0);
 		long loHz = (long) ch.centerKHz * 1000L - WfmDemodulator.OFFSET_HZ;
@@ -1594,7 +1800,6 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			loHz = 1_000_000L;
 		fmEngine.setVolume(settings.getListenVolume().getValue());
 		waterfallPlot.setAudioMode(true);
-		waterfallPlot.applyPowerWindow(-80, 0);
 		final long[] lastRowMs = { 0L };
 		fmEngine.setSpectrumListener(row -> {
 			long now = System.currentTimeMillis();
@@ -1645,6 +1850,7 @@ public class HackRFSweepSpectrumAnalyzer implements HackRFSettings, HackRFSweepD
 			sweepEngine.requestStop();
 		HackRFFmNativeBridge.stop();
 		fmEngine.stop();
+		tvEngine.stop();
 		if (threadHackrfSweep != null) {
 			while (threadHackrfSweep.isAlive()) {
 				forceStopSweep = true;

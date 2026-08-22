@@ -67,6 +67,11 @@ class AnalyzerSettingsTest {
 			}
 
 			@Override
+			public void startWatch()
+			{
+			}
+
+			@Override
 			public List<String> listRadioSerials()
 			{
 				return serials;
@@ -106,6 +111,11 @@ class AnalyzerSettingsTest {
 			}
 
 			@Override
+			public void startWatch()
+			{
+			}
+
+			@Override
 			public List<String> listRadioSerials()
 			{
 				return List.of();
@@ -130,6 +140,10 @@ class AnalyzerSettingsTest {
 		assertEquals(RadioMode.SWEEP, s.radioMode());
 		assertFalse(s.isRadioSetting(s.isListening()));
 		assertFalse(s.isRadioSetting(s.getListenVolume()));
+		s.startWatch();
+		assertEquals(RadioMode.WATCH, s.radioMode());
+		assertEquals(ListenService.TV, s.getListenService().getValue());
+		assertEquals(14, s.getTvChannel().getValue());
 	}
 
 	@Test

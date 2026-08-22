@@ -32,4 +32,17 @@ public class HackrfSweepLibrary implements Library {
 	public static native void hackrf_fm_lib_stop();
 
 	public static native void hackrf_fm_lib_config(String serial_number, int clkout_enable);
+
+	public static native Pointer atsc_rx_create(double input_rate_hz);
+
+	public static native void atsc_rx_destroy(Pointer rx);
+
+	public static native void atsc_rx_set_invert(Pointer rx, int invert);
+
+	public static native int atsc_rx_process(Pointer rx, byte[] iq, int nbytes, byte[] ts_out, int ts_cap,
+			FloatByReference snr_db);
+
+	public static native int atsc_rx_locked(Pointer rx);
+
+	public static native int atsc_rx_packets(Pointer rx);
 }

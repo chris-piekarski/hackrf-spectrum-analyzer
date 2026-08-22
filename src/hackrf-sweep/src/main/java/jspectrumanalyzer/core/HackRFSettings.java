@@ -82,6 +82,9 @@ public interface HackRFSettings {
 	/** Parked WFM receiver. Stops the sweep; USB stays owned. */
 	public void startListen();
 
+	/** Parked ATSC 1.0 receiver. Stops the sweep; USB stays owned. */
+	public void startWatch();
+
 	/** Leave listen mode and resume the sweep unless Stop was pressed. */
 	public void stopListen();
 
@@ -94,6 +97,13 @@ public interface HackRFSettings {
 
 	/** Live FM detections for the tuner knob (may be empty). */
 	public ModelValue<java.util.List<FmStationHit>> getDetectedFmStations();
+
+	public ModelValue<ListenService> getListenService();
+
+	/** US TV channel 2–36 (47 CFR 73.603 / ATSC 1.0). */
+	public ModelValueInt getTvChannel();
+
+	public ModelValue<java.util.List<TvStationHit>> getDetectedTvStations();
 
 	/** USB serials currently visible to libhackrf (may be empty). */
 	public java.util.List<String> listRadioSerials();

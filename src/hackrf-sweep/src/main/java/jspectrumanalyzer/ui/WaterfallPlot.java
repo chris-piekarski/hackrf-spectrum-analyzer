@@ -30,6 +30,10 @@ public class WaterfallPlot extends JPanel {
 	 * 
 	 */
 	private static final long	serialVersionUID		= 3249110968962287324L;
+	/** Audio waterfall dBFS window. Must not overwrite the RF palette — that
+	 * palette also places the color bar on the spectrum Y-axis. */
+	public static final double	AUDIO_PALETTE_START_DB	= -80;
+	public static final double	AUDIO_PALETTE_SIZE_DB	= 80;
 	private BufferedImage		bufferedImages[]		= new BufferedImage[2];
 	private int					chartXOffset			= 0, chartWidth = 100;
 	private boolean				displayMarker			= false;
@@ -59,7 +63,11 @@ public class WaterfallPlot extends JPanel {
 	private static final Color	BANNER_AUDIO_TEXT		= new Color(20, 16, 8);
 	private static final int	TIME_AXIS_MIN_GUTTER	= 28;
 	private boolean				audioMode				= false;
+	private boolean				videoMode				= false;
 	private float				audioHzMax				= 16_000f;
+	private double				videoCenterHz			= 0;
+	private float				videoSpanHz				= 12_000_000f;
+	private volatile BufferedImage videoStill;
 
 	public WaterfallPlot(ChartPanel chartPanel, int maxHeight) {
 		setPreferredSize(new Dimension(100, 200));
@@ -116,6 +124,7 @@ public class WaterfallPlot extends JPanel {
 	 */
 	public synchronized void addNewData(DatasetSpectrum spectrum) {
 		audioMode = false;
+		videoMode = false;
 		long start	= System.nanoTime();
 
 		int size = spectrum.spectrumLength();
@@ -259,8 +268,27 @@ public class WaterfallPlot extends JPanel {
 		if (db == null || db.length == 0)
 			return;
 		audioMode = true;
+		videoMode = false;
 		audioHzMax = hzMax > 0 ? hzMax : 16_000f;
 		lastSpectrum = null;
+		addParkedDbRow(db);
+	}
+
+	/**
+	 * One row of parked-IQ dBFS vs baseband (fftshifted −fs/2…+fs/2).
+	 */
+	public synchronized void addVideoFrame(float[] db, float spanHz, double centerHz) {
+		if (db == null || db.length == 0)
+			return;
+		videoMode = true;
+		audioMode = false;
+		videoSpanHz = spanHz > 0 ? spanHz : 12_000_000f;
+		videoCenterHz = centerHz;
+		lastSpectrum = null;
+		addParkedDbRow(db);
+	}
+
+	private void addParkedDbRow(float[] db) {
 		int size = db.length;
 		double width = bufferedImages[0].getWidth();
 
@@ -279,7 +307,7 @@ public class WaterfallPlot extends JPanel {
 		Arrays.fill(drawMaxBuffer, minimumValueDrawBuffer);
 		double widthDivSize = (double) width / size;
 		for (int i = 0; i < size; i++) {
-			double percentagePower = normalizePower(db[i], spectrumPaletteStart, spectrumPaletteSize);
+			double percentagePower = normalizePower(db[i], AUDIO_PALETTE_START_DB, AUDIO_PALETTE_SIZE_DB);
 			int pixelX = clampPixelX((int) Math.round(widthDivSize * i), drawMaxBuffer.length);
 			if (percentagePower > drawMaxBuffer[pixelX])
 				drawMaxBuffer[pixelX] = (float) percentagePower;
@@ -312,18 +340,46 @@ public class WaterfallPlot extends JPanel {
 		return audioMode;
 	}
 
+	public boolean isVideoMode() {
+		return videoMode;
+	}
+
 	public float getAudioHzMax() {
 		return audioHzMax;
 	}
 
 	public synchronized void setAudioMode(boolean on) {
-		if (audioMode == on)
+		if (audioMode == on && !videoMode)
 			return;
 		audioMode = on;
+		if (on)
+			videoMode = false;
 		clearHistory();
 	}
 
+	public synchronized void setVideoMode(boolean on, double centerHz) {
+		boolean was = videoMode;
+		videoMode = on;
+		if (on)
+		{
+			audioMode = false;
+			videoCenterHz = centerHz;
+			videoSpanHz = jspectrumanalyzer.core.IqSpectrum.DISPLAY_HZ;
+		}
+		else
+			videoStill = null;
+		if (was != on)
+			clearHistory();
+	}
+
+	public void setVideoStill(BufferedImage img) {
+		videoStill = img;
+		repaint();
+	}
+
 	public double getLastRbwHz() {
+		if (videoMode)
+			return videoSpanHz / Math.max(1, lastBinCount);
 		if (audioMode)
 			return audioHzMax / Math.max(1, lastBinCount);
 		return lastSpectrum == null ? 0 : lastSpectrum.getFFTBinSizeHz();
@@ -452,6 +508,16 @@ public class WaterfallPlot extends JPanel {
 	}
 
 	private double translateChartXToFrequency(int x) {
+		if (videoMode) {
+			if (chartWidth <= 0)
+				return -1;
+			double u = x / (double) chartWidth;
+			if (u < 0)
+				u = 0;
+			if (u > 1)
+				u = 1;
+			return videoCenterHz + (u - 0.5) * videoSpanHz;
+		}
 		if (audioMode) {
 			if (chartWidth <= 0)
 				return -1;
@@ -471,7 +537,15 @@ public class WaterfallPlot extends JPanel {
 	}
 
 	public static String modeBanner(boolean audio) {
-		return audio ? "AUDIO  ·  0–16 kHz" : "RF waterfall";
+		return modeBanner(audio, false);
+	}
+
+	public static String modeBanner(boolean audio, boolean video) {
+		if (video)
+			return "VIDEO  ·  ±10 MHz";
+		if (audio)
+			return "AUDIO  ·  0–16 kHz";
+		return "RF waterfall";
 	}
 
 	static String formatAudioHz(double hz) {
@@ -483,7 +557,7 @@ public class WaterfallPlot extends JPanel {
 	}
 
 	private void drawModeBanner(Graphics2D g, int x0) {
-		String title = modeBanner(audioMode);
+		String title = modeBanner(audioMode, videoMode);
 		g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 		Font font = getFont() == null ? new Font(Font.SANS_SERIF, Font.BOLD, 12) : getFont().deriveFont(Font.BOLD, 12f);
 		g.setFont(font);
@@ -494,9 +568,10 @@ public class WaterfallPlot extends JPanel {
 		int th = fm.getAscent() + fm.getDescent();
 		int x = x0 + 8;
 		int y = 8;
-		g.setColor(audioMode ? BANNER_AUDIO : BANNER_RF);
+		boolean gold = audioMode || videoMode;
+		g.setColor(gold ? BANNER_AUDIO : BANNER_RF);
 		g.fillRoundRect(x, y, tw + padX * 2, th + padY * 2, 8, 8);
-		g.setColor(audioMode ? BANNER_AUDIO_TEXT : BANNER_RF_TEXT);
+		g.setColor(gold ? BANNER_AUDIO_TEXT : BANNER_RF_TEXT);
 		g.drawString(title, x + padX, y + padY + fm.getAscent());
 	}
 
@@ -525,6 +600,54 @@ public class WaterfallPlot extends JPanel {
 				tx = x0 + w - tw;
 			g.drawString(lab, tx, y);
 		}
+	}
+
+	private void drawVideoMhzAxis(Graphics2D g, int x0, int w, int h) {
+		if (w < 40 || h < 16)
+			return;
+		g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		Font font = getFont() == null ? new Font(Font.SANS_SERIF, Font.PLAIN, 11) : getFont().deriveFont(Font.PLAIN, 11f);
+		g.setFont(font);
+		g.setColor(TIME_AXIS_COLOR);
+		int y = h - 2;
+		g.drawLine(x0, y - 10, x0 + w, y - 10);
+		float half = videoSpanHz / 2f;
+		float[] ticks = { -half, -half / 2f, 0, half / 2f, half };
+		FontMetrics fm = g.getFontMetrics();
+		for (float off : ticks) {
+			int x = x0 + (int) Math.round(w * ((off + half) / videoSpanHz));
+			g.drawLine(x, y - 14, x, y - 10);
+			String lab;
+			if (off == 0)
+				lab = "0";
+			else
+				lab = String.format("%+.0f", off / 1e6f);
+			int tw = fm.stringWidth(lab);
+			int tx = x - tw / 2;
+			if (tx < x0)
+				tx = x0;
+			if (tx + tw > x0 + w)
+				tx = x0 + w - tw;
+			g.drawString(lab, tx, y);
+		}
+	}
+
+	private void drawVideoStill(Graphics2D g, int x0, int w, int h) {
+		BufferedImage still = videoStill;
+		if (still == null || still.getWidth() < 2 || w < 80 || h < 60)
+			return;
+		int pw = Math.min(w / 3, 280);
+		int ph = (int) Math.round(pw * (still.getHeight() / (double) still.getWidth()));
+		if (ph > h / 2)
+		{
+			ph = h / 2;
+			pw = (int) Math.round(ph * (still.getWidth() / (double) still.getHeight()));
+		}
+		int px = x0 + w - pw - 8;
+		int py = 28;
+		g.drawImage(still, px, py, pw, ph, null);
+		g.setColor(BANNER_AUDIO);
+		g.drawRect(px - 1, py - 1, pw + 1, ph + 1);
 	}
 
 	void drawTimeAxis(Graphics2D g, long[] times, int height) {
@@ -584,6 +707,11 @@ public class WaterfallPlot extends JPanel {
 		drawModeBanner(g, chartXOffset);
 		if (audioMode)
 			drawAudioHzAxis(g, chartXOffset, w, h);
+		else if (videoMode)
+		{
+			drawVideoMhzAxis(g, chartXOffset, w, h);
+			drawVideoStill(g, chartXOffset, w, h);
+		}
 
 		if (displayMarker) {
 			g.setColor(Color.gray);

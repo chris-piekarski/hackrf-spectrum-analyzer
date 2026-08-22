@@ -49,6 +49,8 @@ class SpectrumMcpToolsTest {
 		assertTrue(list.contains("fm_stations"));
 		assertTrue(list.contains("spectrum_occupancy"));
 		assertTrue(list.contains("spectrum_history"));
+		assertTrue(list.contains("tv_watch"));
+		assertTrue(list.contains("fm_listen"));
 		assertNull(tools.handleRpc("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"));
 	}
 
@@ -92,6 +94,60 @@ class SpectrumMcpToolsTest {
 		assertTrue(cfg.contains("listen"));
 		assertTrue(cfg.contains("listenMHz"));
 		assertTrue(cfg.contains("97.3"));
+	}
+
+	@Test
+	void sweepConfigReportsWatchModeAndTvChannel() {
+		SpectrumSnapshotStore store = new SpectrumSnapshotStore();
+		AnalyzerSettings settings = new AnalyzerSettings();
+		settings.getTvChannel().setValue(14);
+		settings.startWatch();
+		store.publishContext(settings, java.util.List.of(), 0);
+		SpectrumMcpTools tools = new SpectrumMcpTools(store);
+		String cfg = tools.call("sweep_config", Map.of());
+		assertTrue(cfg.contains("watch"));
+		assertTrue(cfg.contains("tvChannel"));
+		assertTrue(cfg.contains("14"));
+		assertTrue(cfg.contains("tvLocked"));
+	}
+
+	@Test
+	void tvWatchRequiresBinding() {
+		SpectrumMcpTools tools = new SpectrumMcpTools(new SpectrumSnapshotStore());
+		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+				() -> tools.call("tv_watch", Map.of("channel", 31)));
+		assertTrue(ex.getMessage().contains("not bound"));
+	}
+
+	@Test
+	void tvWatchParksTheNamedChannel() {
+		int[] got = { 0 };
+		SpectrumSnapshotStore store = new SpectrumSnapshotStore();
+		SpectrumMcpTools tools = new SpectrumMcpTools(store, ch -> got[0] = ch);
+		String out = tools.call("tv_watch", Map.of("channel", 31));
+		assertEquals(31, got[0]);
+		assertTrue(out.contains("tvChannel"));
+		assertTrue(out.contains("31"));
+		assertTrue(out.contains("575"));
+	}
+
+	@Test
+	void fmListenRequiresBinding() {
+		SpectrumMcpTools tools = new SpectrumMcpTools(new SpectrumSnapshotStore());
+		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+				() -> tools.call("fm_listen", Map.of("mhz", 97.3)));
+		assertTrue(ex.getMessage().contains("not bound"));
+	}
+
+	@Test
+	void fmListenParksTheNamedDial() {
+		double[] got = { 0 };
+		SpectrumMcpTools tools = new SpectrumMcpTools(new SpectrumSnapshotStore(), null, mhz -> got[0] = mhz);
+		String out = tools.call("fm_listen", Map.of("mhz", 97.3));
+		assertEquals(97.3, got[0], 1e-6);
+		assertTrue(out.contains("listenMHz"));
+		assertTrue(out.contains("97.3"));
+		assertTrue(out.contains("97300"));
 	}
 
 	@Test

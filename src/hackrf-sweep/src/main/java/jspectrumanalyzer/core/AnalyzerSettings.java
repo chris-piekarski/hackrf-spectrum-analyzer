@@ -25,6 +25,8 @@ public final class AnalyzerSettings implements HackRFSettings
 
 		void startListen();
 
+		void startWatch();
+
 		List<String> listRadioSerials();
 
 		Hardware NOOP = new Hardware()
@@ -41,6 +43,11 @@ public final class AnalyzerSettings implements HackRFSettings
 
 			@Override
 			public void startListen()
+			{
+			}
+
+			@Override
+			public void startWatch()
 			{
 			}
 
@@ -88,11 +95,17 @@ public final class AnalyzerSettings implements HackRFSettings
 	private final ModelValueBoolean spurRemoval = new ModelValueBoolean("Spur removal", false);
 	private final ModelValueBoolean waterfallVisible = new ModelValueBoolean("Waterfall visible", true);
 	private final ModelValueBoolean listening = new ModelValueBoolean("Listening", false);
+	private final ModelValue<ListenService> listenService = new ModelValue<ListenService>("Listen service",
+			ListenService.FM);
 	private final ModelValueInt listenKHz = new ModelValueInt("Listen [kHz]", 97300, 200,
 			FmChannelPlan.FIRST_CENTER_KHZ, FmChannelPlan.LAST_CENTER_KHZ);
+	private final ModelValueInt tvChannel = new ModelValueInt("TV channel", 14, 1, TvChannelPlan.FIRST_FCC_CHANNEL,
+			TvChannelPlan.LAST_FCC_CHANNEL);
 	private final ModelValueInt listenVolume = new ModelValueInt("Volume", 80, 1, 0, 100);
 	private final ModelValue<List<FmStationHit>> detectedFmStations = new ModelValue<List<FmStationHit>>(
 			"Detected FM", List.of());
+	private final ModelValue<List<TvStationHit>> detectedTvStations = new ModelValue<List<TvStationHit>>(
+			"Detected TV", List.of());
 
 	public void setHardware(Hardware hardware)
 	{
@@ -285,9 +298,19 @@ public final class AnalyzerSettings implements HackRFSettings
 	@Override
 	public void startListen()
 	{
+		listenService.setValue(ListenService.FM);
 		listening.setValue(true);
 		radioReleased.setValue(false);
 		hardware.startListen();
+	}
+
+	@Override
+	public void startWatch()
+	{
+		listenService.setValue(ListenService.TV);
+		listening.setValue(true);
+		radioReleased.setValue(false);
+		hardware.startWatch();
 	}
 
 	@Override
@@ -324,10 +347,28 @@ public final class AnalyzerSettings implements HackRFSettings
 		return detectedFmStations;
 	}
 
+	@Override
+	public ModelValue<ListenService> getListenService()
+	{
+		return listenService;
+	}
+
+	@Override
+	public ModelValueInt getTvChannel()
+	{
+		return tvChannel;
+	}
+
+	@Override
+	public ModelValue<List<TvStationHit>> getDetectedTvStations()
+	{
+		return detectedTvStations;
+	}
+
 	public RadioMode radioMode()
 	{
 		return RadioMode.from(Boolean.TRUE.equals(radioReleased.getValue()),
-				Boolean.TRUE.equals(listening.getValue()));
+				Boolean.TRUE.equals(listening.getValue()), listenService.getValue());
 	}
 
 	@Override

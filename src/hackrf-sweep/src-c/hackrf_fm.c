@@ -106,7 +106,9 @@ int hackrf_fm_lib_start(
 		goto done;
 	}
 
-	filter_bw = hackrf_compute_baseband_filter_bw(1750000);
+	/* FM uses 4 MS/s (~2 MHz IF). ATSC Watch uses 20 MS/s so analog BW is
+	 * 10 MHz and the 6 MHz 8VSB brick is not sitting on the Nyquist edge. */
+	filter_bw = hackrf_compute_baseband_filter_bw(sample_rate / 2);
 	result = hackrf_set_baseband_filter_bandwidth(device, filter_bw);
 	if (result != HACKRF_SUCCESS) {
 		fprintf(stderr, "hackrf_fm: filter bw failed: %s (%d)\n", hackrf_error_name(result), result);

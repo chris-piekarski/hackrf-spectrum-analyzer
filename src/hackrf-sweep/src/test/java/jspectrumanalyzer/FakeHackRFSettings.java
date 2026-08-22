@@ -21,6 +21,7 @@ public class FakeHackRFSettings implements HackRFSettings {
 	public int restartSweepCalls;
 	public int releaseRadioCalls;
 	public int startListenCalls;
+	public int startWatchCalls;
 	public List<String> listedSerials = new ArrayList<String>();
 
 	public FakeHackRFSettings() {
@@ -38,6 +39,11 @@ public class FakeHackRFSettings implements HackRFSettings {
 			@Override
 			public void startListen() {
 				startListenCalls++;
+			}
+
+			@Override
+			public void startWatch() {
+				startWatchCalls++;
 			}
 
 			@Override
@@ -178,6 +184,11 @@ public class FakeHackRFSettings implements HackRFSettings {
 	}
 
 	@Override
+	public void startWatch() {
+		inner.startWatch();
+	}
+
+	@Override
 	public void stopListen() {
 		inner.stopListen();
 	}
@@ -200,6 +211,21 @@ public class FakeHackRFSettings implements HackRFSettings {
 	@Override
 	public ModelValue<java.util.List<jspectrumanalyzer.core.FmStationHit>> getDetectedFmStations() {
 		return inner.getDetectedFmStations();
+	}
+
+	@Override
+	public ModelValue<jspectrumanalyzer.core.ListenService> getListenService() {
+		return inner.getListenService();
+	}
+
+	@Override
+	public ModelValueInt getTvChannel() {
+		return inner.getTvChannel();
+	}
+
+	@Override
+	public ModelValue<java.util.List<jspectrumanalyzer.core.TvStationHit>> getDetectedTvStations() {
+		return inner.getDetectedTvStations();
 	}
 
 	@Override
